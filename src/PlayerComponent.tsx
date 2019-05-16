@@ -139,10 +139,18 @@ export class PlayerComponent extends React.Component<PlayerProps, PlayerState> {
 }
 
 export class SeekablePlayerComponent extends PlayerComponent {
+    private width = 1280;
+
     public render(): React.ReactNode {
-        return <div style={{width: "1280px", height: "720px"}} key="vplayer">
+        return <div style={{width: "100%", height: "720px"}} key="vplayer">
             {super.render()}
-            <div key="seekbar" style={{width: "1280px", height: "8px", background: "grey", position: "relative"}}
+            <div key="seekbar" style={{width: "100%", height: "8px", background: "grey", position: "relative"}}
+                 ref={r => {
+                     if (r) {
+                         this.width = r.clientWidth | 0;
+                     }
+                 }
+                 }
                  onClick={(el) => {
                      const offsetX = el.nativeEvent.offsetX;
                      const w = el.currentTarget.clientWidth;
@@ -169,7 +177,7 @@ export class SeekablePlayerComponent extends PlayerComponent {
         }
         const t = this.player.getCurrentTime();
         const d = this.player.getDurationSec();
-        const p = t / d * 1280;
+        const p = t / d * this.width;
         return `${p}px`;
     }
 
@@ -178,7 +186,7 @@ export class SeekablePlayerComponent extends PlayerComponent {
             return 0;
         }
         const d = this.player.getDurationSec();
-        const p = t / d * 1280;
+        const p = t / d * this.width;
         return p;
     }
 

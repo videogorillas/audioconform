@@ -5,6 +5,7 @@ import ChannelLabel = org.jcodec.common.model.ChannelLabel;
 
 export const live4red = "#ee2737";
 export const live4blue = "#2196f3";
+export const ZERO = Long.fromInt(0);
 
 export function newSampleRange(start: number, end: number): SampleRange {
     return new SampleRange(Long.fromNumber(start), Long.fromNumber(end));
@@ -13,7 +14,6 @@ export function newSampleRange(start: number, end: number): SampleRange {
 export function fileKey(file: File): string {
     return (file as any).webkitRelativePath || file.name;
 }
-
 
 export function labelFromString(name: string) {
     switch (name) {

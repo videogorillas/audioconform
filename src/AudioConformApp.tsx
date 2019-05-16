@@ -1,41 +1,41 @@
 import Button from "@material-ui/core/Button";
-import Checkbox from "@material-ui/core/Checkbox";
-import ExpansionPanel from "@material-ui/core/ExpansionPanel";
-import ExpansionPanelDetails from "@material-ui/core/ExpansionPanelDetails";
-import ExpansionPanelSummary from "@material-ui/core/ExpansionPanelSummary";
 import FormControl from "@material-ui/core/FormControl";
-import FormHelperText from "@material-ui/core/FormHelperText";
 import Grid from "@material-ui/core/Grid";
+import GridList from "@material-ui/core/GridList";
+import GridListTile from "@material-ui/core/GridListTile";
 import IconButton from "@material-ui/core/IconButton";
-import List from "@material-ui/core/List";
-import ListItem from "@material-ui/core/ListItem";
+import ListSubheader from "@material-ui/core/ListSubheader";
 import MenuItem from "@material-ui/core/MenuItem";
 import Select from "@material-ui/core/Select";
+import Switch from "@material-ui/core/Switch";
+import Tooltip from "@material-ui/core/Tooltip";
 import Typography from "@material-ui/core/Typography";
 import CloudUploadIcon from "@material-ui/icons/CloudUpload";
-import ExpandMoreIcon from "@material-ui/icons/ExpandMore";
+import Hearing from "@material-ui/icons/Hearing";
+import MoreVert from "@material-ui/icons/MoreVert";
 import StarBorder from "@material-ui/icons/StarBorder";
 import StarRate from "@material-ui/icons/StarRate";
 import {_private, Player} from "@sysval/vgplayer-core";
 import {com, konform, org} from "konform";
 import {kotlin, Long} from "kotlin";
 import * as React from "react";
-import SpeedDials from "./MyFab";
-import {Channel, SeekablePlayerComponent} from "./PlayerComponent";
-import {fileKey, labelFromString, newSampleRange} from "./utils";
-import WaveCanvas from "./WaveCanvas";
-import {WorkerClient} from "./workerclient";
+import AudioChannelComponent from "./AudioChannelComponent";
 import ChannelLabel = org.jcodec.common.model.ChannelLabel;
 import Observable = Rx.Observable;
-import wavHeader = konform.wavHeader;
 import Pair = kotlin.Pair;
 import AudioInfo = _private.AudioInfo;
 import WavHeader = org.jcodec.codecs.wav.WavHeader;
-import WavSource = konform.WavSource;
 import ResampleFilter = konform.ResampleFilter;
 import FastAudioIndex = com.vg.audio.FastAudioIndex;
 import SampleRange = com.vg.audio.SampleRange;
+import wavHeader = konform.wavHeader;
+import WavSource = konform.WavSource;
 import WaveformSourceImpl = konform.WaveformSourceImpl;
+import AudioChannelSettingsComponent from "./AudioChannelSettingsComponent";
+import SpeedDials from "./MyFab";
+import {Channel, SeekablePlayerComponent} from "./PlayerComponent";
+import {fileKey, labelFromString, newSampleRange, ZERO} from "./utils";
+import {WorkerClient} from "./workerclient";
 
 class AudioComponent {
     public files: File[] = [];
@@ -50,6 +50,7 @@ interface AudioConformState {
     labelmap: Map<string, ChannelLabel>;
     vtime: number;
     settingsForComponent?: string;
+    showSettingsForChannel?: string;
     checkedForConform: Set<string>;
     forceSampleRate: Map<string, number>;
     indexProgress: Map<string, Long>;
@@ -69,8 +70,6 @@ function audioInfoFromWav(wav: WavHeader) {
     ai.audioType = "wav";
     return ai;
 }
-
-const ZERO = Long.fromInt(0);
 
 export default class AudioConformApp extends React.Component<AudioConformProps, AudioConformState> {
     public state: AudioConformState = {
@@ -123,6 +122,31 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
             </Grid>
         </Grid>
             <div style={{position: "absolute", bottom: "48px", right: "48px"}}><SpeedDials/></div>
+            <AudioChannelSettingsComponent channel={this.channels.get(this.state.showSettingsForChannel)}
+                                           open={!!this.state.showSettingsForChannel}
+                                           onCancel={(c) => this.setState({showSettingsForChannel: undefined})}
+                                           onOk={(c) => {
+                                               console.log("save settings for channel ", c);
+                                               const ch = this.channels.get(c.id);
+                                               if (c.label) {
+                                                   this.state.labelmap.set(c.id, c.label);
+                                                   if (ch != null) {
+                                                       ch.label = c.label;
+                                                   }
+                                               }
+                                               if (c.sampleRate) {
+                                                   this.state.forceSampleRate.set(c.id, c.sampleRate);
+                                                   if (ch != null) {
+                                                       ch.forceSampleRate = c.sampleRate;
+                                                   }
+                                               }
+
+                                               this.setState({
+                                                   showSettingsForChannel: undefined,
+                                                   labelmap: this.state.labelmap,
+                                                   forceSampleRate: this.state.forceSampleRate,
+                                               });
+                                           }}/>
         </div>;
     }
 
@@ -179,6 +203,7 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
             justify="center"
             alignItems="center"
         >
+            <Switch value="checkedC"/><Typography variant="caption" gutterBottom> Conform mode </Typography>
             <Button variant="contained" color="primary" disabled={!enabled}
                     onClick={(e) => this.theconform()}>Conform</Button>
         </Grid>;
@@ -245,15 +270,7 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
         return c;
     }
 
-    private star(isMaster: boolean): React.ReactNode {
-        if (isMaster) {
-            return <StarRate/>;
-        }
-        return <StarBorder/>;
-    }
-
     private audiochannel(file: File): React.ReactNode {
-        const hzs = [47952, 48000];
         let endsec: number;
         if (this.player) {
             endsec = this.player.getDurationSec();
@@ -267,141 +284,78 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
         const selectionRange: SampleRange = selectionEnd ? new SampleRange(ZERO, selectionEnd) : undefined;
         const offset = (this.state.foundOffsets.get(key) || ZERO).toNumber();
         const sampleRange = offset ? newSampleRange(-offset, endsec * channel.audioInfo.sampleRate - offset) : undefined;
-        const offsetString = offset ? `${-offset}` : "";
+        const label = this.state.labelmap.get(key) || ChannelLabel.MONO;
 
-        return <div key={key} style={{width: "1280px", height: "80px", position: "relative"}}>
-            <div style={{position: "absolute", left: "0px"}}>
-                <WaveCanvas key={`wave-${key}`} channel={channel}
-                            startSec={0} endSec={endsec} sampleRange={sampleRange} selectRange={selectionRange}/></div>
-            <FormHelperText>{key}</FormHelperText> <Select
-            value={hz}
-            inputProps={{
-                name: "hz",
-                id: "hz-simple",
-            }}
-            onChange={(it) => {
-                console.log("hzselect", it.target.value);
-                const newhz = (parseInt(it.target.value) | 0) || 48000;
-                this.state.forceSampleRate.set(key, newhz);
-                this.setState({forceSampleRate: this.state.forceSampleRate});
-            }}
-        >
-            {
-                hzs.map((hzv) => {
-                    return <MenuItem value={hzv}>{hzv}</MenuItem>;
-                })
-            }
-        </Select>
-
-            {/*<div style={{position: "absolute"}} onClick={(e) => {*/}
-            {/*    const newhz = hz == 48000 ? 47952 : 48000;*/}
-            {/*    */}
-            {/*    this.setState({forceSampleRate: this.state.forceSampleRate});*/}
-            {/*}}>{key} {hz}Hz {offsetString}*/}
-            {/*</div>*/}
-            <IconButton key={`makemaster-${key}`} onClick={(it) => {
-                this.setState({masterAudio: file});
-            }}>{this.star(isMaster)}</IconButton>
-            {this.labelselect(file)}
-            {this.solounsolo(file)}
-            {this.hascheckbox(isMaster, key)}
-            {/*<CircularProgress color="secondary"/>*/}
-        </div>;
-    }
-
-    private hascheckbox(isMaster: boolean, key: string): React.ReactNode {
-        if (isMaster) {
-            return null;
-        }
-        return <Checkbox
-            checked={this.state.checkedForConform.has(key)}
-            onChange={(e) => {
-                if (this.state.checkedForConform.has(key)) {
-                    this.state.checkedForConform.delete(key);
-                } else {
-                    this.state.checkedForConform.add(key);
-                }
-                this.setState({checkedForConform: this.state.checkedForConform});
-            }}
-            value="checkedA"
-        />;
+        return <AudioChannelComponent isMaster={isMaster}
+                                      isCheckedForConform={this.state.checkedForConform.has(key)}
+                                      isSoloed={this.state.soloed.has(file)}
+                                      channel={channel}
+                                      forceSampleRate={this.state.forceSampleRate.get(key)}
+                                      label={label}
+                                      offset={offset}
+                                      startSec={0}
+                                      endSec={endsec}
+                                      sampleRange={sampleRange}
+                                      selection={selectionRange}
+                                      onSolo={(c) => {
+                                          if (this.state.soloed.has(file)) {
+                                              this.state.soloed.delete(file);
+                                          } else {
+                                              this.state.soloed.add(file);
+                                          }
+                                          this.setState({soloed: this.state.soloed});
+                                      }}
+                                      onSetMaster={(c) => this.setState({masterAudio: file})}
+                                      onCheckedForConform={(e) => {
+                                          if (this.state.checkedForConform.has(key)) {
+                                              this.state.checkedForConform.delete(key);
+                                          } else {
+                                              this.state.checkedForConform.add(key);
+                                          }
+                                          this.setState({checkedForConform: this.state.checkedForConform});
+                                      }} onSettings={(e) => this.setState({showSettingsForChannel: channel.id})}/>;
     }
 
     private audio(): React.ReactNode {
         const comps: React.ReactNode[] = this.state.components.map((comp) => {
-            return <ExpansionPanel key={comp.name}>
-                <ExpansionPanelSummary expandIcon={<ExpandMoreIcon/>}>
-                    <Typography>{comp.name}</Typography>
-                </ExpansionPanelSummary>
-                <ExpansionPanelDetails>
-                    <List>
-                        {comp.files.map((file) => {
-                            return <ListItem> {this.audiochannel(file)}</ListItem>;
-                        })}
-                    </List>
-                </ExpansionPanelDetails>
-            </ExpansionPanel>;
+            return <GridList cellHeight={80} cols={1}>
+                <GridListTile key="Subheader" style={{height: "auto"}}>
+                    <ListSubheader component="div">{comp.name}
+                        <Tooltip title="Component Settings" aria-label="Component Settings">
+                            <IconButton><MoreVert fontSize="small"/></IconButton>
+                        </Tooltip>
+                    </ListSubheader>
+                </GridListTile>
+                {comp.files.map((file) => {
+                    const key = fileKey(file);
+                    const channel = this.channels.get(key);
+                    const hz = this.state.forceSampleRate.get(key) || channel.audioInfo.sampleRate;
+
+                    return <GridListTile key={key}>
+                        {this.audiochannel(file)};
+                        {/*<GridListTileBar*/}
+                        {/*    title={file.name}*/}
+                        {/*    subtitle={<span>by: Alex Zhukov</span>}*/}
+                        {/*    actionIcon={*/}
+                        {/*        <IconButton>*/}
+                        {/*            <InfoIcon/>*/}
+                        {/*        </IconButton>*/}
+                        {/*    }*/}
+                        {/*/>*/}
+                    </GridListTile>;
+                })}
+            </GridList>;
         });
         if (this.state.masterAudio) {
             comps.unshift(<div style={{
                 border: "1px",
                 borderStyle: "dashed",
                 borderColor: "darkgreen",
-                width: "1280px",
+                width: "100%",
                 marginTop: "10px",
             }}>{this.audiochannel(this.state.masterAudio)}</div>);
         }
         return comps;
-    }
-
-    private solounsolo(file: File) {
-        const isSoloed = this.state.soloed.has(file);
-        const solo = isSoloed ? "" : "md-inactive";
-        const key = fileKey(file);
-        return <label key={`solounsolo-${key}`}
-                      style={{position: "absolute", paddingTop: "20px", right: "20px"}}
-                      className={`material-icons md-dark ${solo}`}
-                      onClick={() => {
-                          if (isSoloed) {
-                              this.state.soloed.delete(file);
-                          } else {
-                              this.state.soloed.add(file);
-                          }
-                          this.setState({soloed: this.state.soloed});
-                      }}>hearing</label>;
-    }
-
-    private labelselect(file: File) {
-        const key = fileKey(file);
-        const currentLabel = this.state.labelmap.get(key) || ChannelLabel.MONO;
-
-        return <div key={`soloselect-${key}`} style={{position: "absolute", top: "0px", right: "20px"}}><FormControl>
-            {/*<InputLabel htmlFor="label-simple">Label</InputLabel>*/}
-            <Select
-                value={currentLabel.toString()}
-                inputProps={{
-                    name: "label",
-                    id: "label-simple",
-                }}
-                onChange={(it) => {
-                    console.log("labelselect", it.target.value);
-                    const label = labelFromString(it.target.value) || ChannelLabel.MONO;
-                    const lm = this.state.labelmap;
-                    lm.set(key, label);
-                    const c = this.channels.get(key);
-                    if (c != null) {
-                        c.label = label;
-                    }
-                    this.setState({labelmap: lm});
-                }}
-            >
-                {
-                    ChannelLabel.values().map((label) => {
-                        return <MenuItem value={label.toString()}>{label.toString()}</MenuItem>;
-                    })
-                }
-            </Select>
-        </FormControl></div>;
     }
 
     private onDropAudio(acceptedFiles: File[]): void {
