@@ -156,13 +156,13 @@ function scale32k(samples: Float32Array): Float32Array {
 }
 
 export class Mp3StereoSegmentedAudioStream extends SegmentedAudioStream {
-    static framesPerSegment = 42 * 2;
-    static samplesPerSegment = Mp3StereoSegmentedAudioStream.framesPerSegment * 1152;
+    static readonly framesPerSegment = 42 * 2;
+    static readonly samplesPerSegment = Mp3StereoSegmentedAudioStream.framesPerSegment * 1152;
 
-    private mp3: Mp3Encoder;
-    private samples: SampleSource;
-    private frameCount: number;
-    private segmentCount: number;
+    private readonly mp3: Mp3Encoder;
+    private readonly samples: SampleSource;
+    private readonly frameCount: number;
+    private readonly segmentCount: number;
 
     constructor(proxyId: string, audioInfo: AudioInfo, samples: SampleSource) {
         super();

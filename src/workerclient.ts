@@ -3,18 +3,34 @@ import FastAudioIndex = com.vg.audio.FastAudioIndex;
 import Observable = Rx.Observable;
 import TransferableIndex = com.vg.audio.TransferableIndex;
 
-export interface IndexJob {
+export interface MatchJob {
     idx1: TransferableIndex;
     idx2: TransferableIndex;
 }
 
-export interface IndexResponse {
+export interface MatchResponse {
     best: number;
 }
 
-export function indexWithWorker(worker: Worker, idx1: FastAudioIndex, idx2: FastAudioIndex): Observable<IndexResponse> {
-    const job: IndexJob = {idx1: idx1.toTransferable(), idx2: idx2.toTransferable()};
-    let messages = Observable.create<MessageEvent>((emitter) => {
+export class WorkerClient {
+    private readonly workers: Worker[];
+
+    private workernum = 0;
+    constructor(workers: Worker[]) {
+        this.workers = workers;
+    }
+
+    public matchOffsets(idx1: FastAudioIndex, idx2: FastAudioIndex): Observable<MatchResponse> {
+        this.workernum = this.workernum % this.workers.length;
+        const wid = this.workernum;
+        this.workernum++;
+        return matchWithWorker(this.workers[wid], idx1, idx2);
+    }
+}
+
+function matchWithWorker(worker: Worker, idx1: FastAudioIndex, idx2: FastAudioIndex): Observable<MatchResponse> {
+    return Observable.create<MessageEvent>((emitter) => {
+        const job: MatchJob = {idx1: idx1.toTransferable(), idx2: idx2.toTransferable()};
         worker.postMessage(job);
         const listener = (e: MessageEvent) => {
             console.log("from worker", e);
@@ -31,9 +47,5 @@ export function indexWithWorker(worker: Worker, idx1: FastAudioIndex, idx2: Fast
             worker.removeEventListener("message", listener);
             worker.removeEventListener("error", errorListener);
         };
-    });
-    return messages.map(me => {
-        console.log("message from worker", me);
-        return me.data as IndexResponse;
-    });
+    }).map(me => (me.data as MatchResponse));
 }

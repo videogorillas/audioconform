@@ -1,6 +1,7 @@
-import {com} from "konform";
+import {com, org} from "konform";
 import SampleRange = com.vg.audio.SampleRange;
 import {Long} from "kotlin";
+import ChannelLabel = org.jcodec.common.model.ChannelLabel;
 
 export const live4red = "#ee2737";
 export const live4blue = "#2196f3";
@@ -14,31 +15,39 @@ export function fileKey(file: File): string {
 }
 
 
-export function resample() {
-
-    // e.inputBuffer;  // directly received by the audioprocess event from the microphone in the browser
-
-    const TARGET_SAMPLE_RATE = 48000;
-    const offlineCtx = new OfflineAudioContext(1, 48000, TARGET_SAMPLE_RATE);
-    const sourceAudioBuffer = offlineCtx.createBuffer(1, 47952, 47952);
-    console.log(sourceAudioBuffer);
-    const buffer = offlineCtx.createBuffer(sourceAudioBuffer.numberOfChannels, sourceAudioBuffer.length, sourceAudioBuffer.sampleRate);
-// Copy the source data into the offline AudioBuffer
-    for (let channel = 0; channel < sourceAudioBuffer.numberOfChannels; channel++) {
-        buffer.copyToChannel(sourceAudioBuffer.getChannelData(channel), channel);
+export function labelFromString(name: string) {
+    switch (name) {
+        case "MONO":
+            return ChannelLabel.MONO;
+        case "STEREO_LEFT":
+            return ChannelLabel.STEREO_LEFT;
+        case "STEREO_RIGHT":
+            return ChannelLabel.STEREO_RIGHT;
+        case "LEFT_TOTAL":
+            return ChannelLabel.LEFT_TOTAL;
+        case "RIGHT_TOTAL":
+            return ChannelLabel.RIGHT_TOTAL;
+        case "FRONT_LEFT":
+            return ChannelLabel.FRONT_LEFT;
+        case "FRONT_RIGHT":
+            return ChannelLabel.FRONT_RIGHT;
+        case "CENTER":
+            return ChannelLabel.CENTER;
+        case "LFE":
+            return ChannelLabel.LFE;
+        case "REAR_LEFT":
+            return ChannelLabel.REAR_LEFT;
+        case "REAR_RIGHT":
+            return ChannelLabel.REAR_RIGHT;
+        case "FRONT_CENTER_LEFT":
+            return ChannelLabel.FRONT_CENTER_LEFT;
+        case "FRONT_CENTER_RIGHT":
+            return ChannelLabel.FRONT_CENTER_RIGHT;
+        case "REAR_CENTER":
+            return ChannelLabel.REAR_CENTER;
+        case "SIDE_LEFT":
+            return ChannelLabel.SIDE_LEFT;
+        case "SIDE_RIGHT":
+            return ChannelLabel.SIDE_RIGHT;
     }
-// Play it from the beginning.
-    const source = offlineCtx.createBufferSource();
-    source.buffer = sourceAudioBuffer;
-    source.connect(offlineCtx.destination);
-    source.start(0);
-    offlineCtx.oncomplete = (e) => {
-        // `resampled` contains an AudioBuffer resampled at 16000Hz.
-        // use resampled.getChannelData(x) to get an Float32Array for channel x.
-        const resampled = e.renderedBuffer;
-        const leftFloat32Array = resampled.getChannelData(0);
-        // use this float32array to send the samples to the server or whatever
-        console.log(leftFloat32Array);
-    };
-    offlineCtx.startRendering();
 }

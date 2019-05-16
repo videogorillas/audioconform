@@ -2,6 +2,7 @@ import * as React from "react";
 import * as ReactDOM from "react-dom";
 import AudioConformApp from "./AudioConformApp";
 import {newSampleRange} from "./utils";
+import {WorkerClient} from "./workerclient";
 
 (window as any)["newSampleRange"] = newSampleRange;
 const cpus = navigator.hardwareConcurrency || 1;
@@ -15,7 +16,7 @@ for (let i = 0; i < cpus; i++) {
 }
 
 ReactDOM.render(
-    <AudioConformApp workers={workers}/>
+    <AudioConformApp workerClient={new WorkerClient(workers)}/>
     ,
     document.getElementById("app"),
 );

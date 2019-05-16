@@ -18,7 +18,7 @@ export class Channel {
     public waveforms: WaveformSource;
     public forceSampleRate?: number;
 
-    sampleRateString(): string {
+    public sampleRateString(): string {
         if (this.forceSampleRate) {
             return `${this.forceSampleRate} -> ${this.audioInfo.sampleRate}`;
         }
