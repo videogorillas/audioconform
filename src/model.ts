@@ -14,6 +14,7 @@ export class Channel {
     public samples: MonoSource;
     public waveforms: WaveformSource;
     public forceSampleRate?: number;
+    public color?: string;
 
     public sampleRateString(): string {
         if (this.forceSampleRate) {
@@ -26,4 +27,5 @@ export class Channel {
 export class AudioComponent {
     public files: File[] = [];
     public name: string = "";
+    public color: string;
 }

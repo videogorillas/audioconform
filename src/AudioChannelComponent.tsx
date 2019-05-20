@@ -85,7 +85,7 @@ export default class AudioChannelComponent extends React.Component<AudioChannelC
                  onMouseOut={() => this.setState({showSeekHelper: false})}
                  onMouseMove={(it) => this.setState({seekHelperX: it.nativeEvent.offsetX})}
             >
-                <WaveCanvas key={`wave-${key}`} channel={channel} sampleRange={sampleRange}
+                <WaveCanvas key={`wave-${key}`} color={channel.color} channel={channel} sampleRange={sampleRange}
                             selectRange={selectionRange}/>
             </div>
             <Typography variant="caption"

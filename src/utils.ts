@@ -7,6 +7,8 @@ export const live4red = "#ee2737";
 export const live4blue = "#2196f3";
 export const ZERO = Long.fromInt(0);
 
+export const DEFAULT_COLOR = "#475164";
+
 export const WAVECOLORS = [
     "#475164"
     , "#E17d9f"

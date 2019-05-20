@@ -9,6 +9,7 @@ import Tooltip from "@material-ui/core/Tooltip";
 import Typography from "@material-ui/core/Typography";
 import CloudUploadIcon from "@material-ui/icons/CloudUpload";
 import MoreVert from "@material-ui/icons/MoreVert";
+import Waves from "@material-ui/icons/Waves";
 import {_private, Player} from "@sysval/vgplayer-core";
 import {com, konform, org} from "konform";
 import {kotlin, Long} from "kotlin";
@@ -17,7 +18,7 @@ import AudioChannelComponent from "./AudioChannelComponent";
 import AudioChannelSettingsComponent from "./AudioChannelSettingsComponent";
 import SpeedDials from "./MyFab";
 import {SeekablePlayerComponent} from "./PlayerComponent";
-import {fileKey, newSampleRange, ZERO} from "./utils";
+import {fileKey, newSampleRange, WAVECOLORS, ZERO} from "./utils";
 import {WorkerClient} from "./workerclient";
 import ChannelLabel = org.jcodec.common.model.ChannelLabel;
 import Observable = Rx.Observable;
@@ -32,7 +33,6 @@ import WavSource = konform.WavSource;
 import WaveformSourceImpl = konform.WaveformSourceImpl;
 import {AudioComponent, Channel} from "./model";
 import AudioComponentSettingsComponent from "./AudioComponentSettingsComponent";
-import Settings from "@material-ui/core/SvgIcon/SvgIcon";
 
 interface AudioConformState {
     vfile: File;
@@ -407,6 +407,10 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
             return <GridList cellHeight={80} cols={1}>
                 <GridListTile key="Subheader" style={{height: "auto"}}>
                     <ListSubheader component="div">{comp.name}
+                        <IconButton
+                            key={`color-${comp.name}`}
+                            onClick={(it) => this.setState({showSettingsForComponent: comp.name})}><Waves
+                            nativeColor={comp.color} fontSize="small"/> </IconButton>
                         <Tooltip title="Component Settings" aria-label="Component Settings">
                             <IconButton
                                 key={`settings-${comp.name}`}
@@ -444,6 +448,7 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
         if (newFiles.length != 0) {
             const component = new AudioComponent();
             component.name = fileKey(acceptedFiles[0]).replace(/\/.*/, "");
+            component.color = WAVECOLORS[(Math.random() * WAVECOLORS.length) | 0];
             const components = this.state.components.slice(0);
             components.push(component);
             Observable.fromArray(newFiles).concatMap((f) => {
@@ -461,6 +466,7 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
                 chan.samples = new WavSource(file, wav);
                 chan.audioInfo = audioInfoFromWav(wav);
                 chan.waveforms = new WaveformSourceImpl(chan.samples);
+                chan.color = component.color;
                 this.channels.set(key, chan);
                 component.files.push(file);
                 this.setState({components});

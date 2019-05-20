@@ -1,6 +1,6 @@
 import {com, konform} from "konform";
 import React = require("react");
-import {live4red, newSampleRange} from "./utils";
+import {DEFAULT_COLOR, live4red, newSampleRange} from "./utils";
 import CssWaveCollider = konform.CssWaveCollider;
 import SampleRange = com.vg.audio.SampleRange;
 import Observable = Rx.Observable;
@@ -13,6 +13,7 @@ interface WaveCanvasProps {
     startSec?: number;
     endSec?: number;
     selectRange?: SampleRange;
+    color?: string;
 }
 
 interface WaveCanvasState {
@@ -53,9 +54,10 @@ export default class WaveCanvas extends React.Component<WaveCanvasProps, WaveCan
         // console.log("componentWillReceiveProps");
         const nextsr = samplerange(nextProps);
         const cursr = samplerange(this.props);
-        const update = nextsr.toString() != cursr.toString() || str(this.props.selectRange) != str(nextProps.selectRange);
+        const update = nextsr.toString() != cursr.toString() || str(this.props.selectRange) != str(nextProps.selectRange) || str(this.props.color) != str(nextProps.color);
         // console.log("componentWillReceiveProps", str(nextsr), str(cursr), str(this.props.selectRange), str(nextProps.selectRange), update);
         if (update) {
+            this.collider.waveColor = nextProps.color || DEFAULT_COLOR;
             this.collider.drawWave(nextsr, nextProps.selectRange);
         }
     }
@@ -94,6 +96,7 @@ export default class WaveCanvas extends React.Component<WaveCanvasProps, WaveCan
         const sampleRate = channel.audioInfo.sampleRate;
 
         this.collider = new CssWaveCollider(channel.waveforms, this.canvasel);
+        this.collider.waveColor = channel.color || DEFAULT_COLOR;
         (window as any)[`collider${channel.id}`] = this.collider;
         const down = Observable.fromEvent(this.canvasel, "mousedown").filter((it: MouseEvent) => it.altKey);
         const up = Observable.fromEvent(this.canvasel, "mouseup");
