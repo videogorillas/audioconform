@@ -7,8 +7,11 @@ import InputLabel from "@material-ui/core/InputLabel";
 import MenuItem from "@material-ui/core/MenuItem";
 import Select from "@material-ui/core/Select";
 import TextField from "@material-ui/core/TextField";
+import Menu from '@material-ui/core/Menu';
 import * as React from "react";
 import {AudioComponent} from "./model";
+import {DEFAULT_COLOR, WAVECOLORS} from "./utils";
+import {Typography} from "@material-ui/core";
 
 interface AudioComponentSettingsComponentProps {
     component: AudioComponent;
@@ -22,16 +25,26 @@ interface AudioComponentSettingsComponentProps {
 interface AudioComponentSettingsComponentState {
     sampleRate?: number;
     offset?: number;
+    anchorEl?: HTMLElement;
+    color?: string;
 }
 
 interface ComponentChanges {
     id: string;
     sampleRate?: number;
     offset?: number;
+    color?: string;
 }
 
 export default class AudioComponentSettingsComponent extends React.Component<AudioComponentSettingsComponentProps, AudioComponentSettingsComponentState> {
     public state: AudioComponentSettingsComponentState = {};
+    private handleClose = (color: string) => {
+        console.log("handleClose", color);
+        this.setState({anchorEl: null, color: color});
+    };
+    private handleClick = (event: any) => {
+        this.setState({anchorEl: event.currentTarget as HTMLElement});
+    };
 
     public render(): React.ReactElement {
         const component = this.props.component || new AudioComponent();
@@ -68,6 +81,29 @@ export default class AudioComponentSettingsComponent extends React.Component<Aud
                         shrink: true,
                     }}
                 />
+                <Button
+                    aria-owns={this.state.anchorEl ? 'simple-menu' : undefined}
+                    aria-haspopup="true"
+                    onClick={this.handleClick}
+                    style={{color: this.state.color || component.color || DEFAULT_COLOR}}
+                >
+                    Color
+                </Button>
+                <Menu
+                    id="simple-menu"
+                    anchorEl={this.state.anchorEl}
+                    open={Boolean(this.state.anchorEl)}
+                    onClose={it => this.handleClose(undefined)}
+                >
+                    {WAVECOLORS.map(color => {
+                        return <MenuItem key={color}
+                                         onClick={it => {
+                                             console.log(it, color);
+                                             this.handleClose(color);
+                                         }} style={{backgroundColor: color}}><Typography variant="caption">This
+                            one</Typography></MenuItem>;
+                    })}
+                </Menu>
             </DialogContent>
             <DialogActions>
                 <Button key="cancel" onClick={(x) => {
@@ -82,6 +118,7 @@ export default class AudioComponentSettingsComponent extends React.Component<Aud
                         id: this.props.component.name,
                         sampleRate: this.state.sampleRate,
                         offset: this.state.offset,
+                        color: this.state.color,
                     };
                     this.props.onOk(changes);
                 }} color="primary">

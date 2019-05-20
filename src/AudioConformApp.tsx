@@ -190,6 +190,9 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
                                                 onCancel={(c) => this.setState({showSettingsForComponent: undefined})}
                                                 onOk={(c) => {
                                                     console.log("save settings for component ", c);
+                                                    if (c.color) {
+                                                        component.color = c.color;
+                                                    }
                                                     component.files.map(f => this.channels.get(fileKey(f))).filter(ch => ch != null).forEach(ch => {
                                                         if (c.sampleRate) {
                                                             this.state.forceSampleRate.set(ch.id, c.sampleRate);
@@ -198,12 +201,16 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
                                                         if (c.offset) {
                                                             this.state.foundOffsets.set(ch.id, c.offset);
                                                         }
+                                                        if (c.color) {
+                                                            ch.color = c.color;
+                                                        }
                                                     });
 
                                                     this.setState({
                                                         showSettingsForComponent: undefined,
                                                         forceSampleRate: this.state.forceSampleRate,
                                                         foundOffsets: this.state.foundOffsets,
+                                                        components: this.state.components,
                                                     });
                                                 }}/>;
     }
