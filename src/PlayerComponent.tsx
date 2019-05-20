@@ -1,30 +1,11 @@
 import {_private, Player} from "@sysval/vgplayer-core";
-import {konform, org} from "konform";
+import {konform} from "konform";
 import * as React from "react";
 import {Mp3StereoSegmentedAudioStream, SilenceAudioStream} from "./Mp3SegmentedAudioSteam";
 import {live4red} from "./utils";
-import ChannelLabel = org.jcodec.common.model.ChannelLabel;
 import PlayerAudioTrack = _private.PlayerAudioTrack;
-import AudioInfo = _private.AudioInfo;
 import StereoDownmixSource = konform.StereoDownmixSource;
-import MonoSource = konform.MonoSource;
-import WaveformSource = konform.WaveformSource;
-
-export class Channel {
-    public id: string;
-    public label: ChannelLabel;
-    public audioInfo: AudioInfo;
-    public samples: MonoSource;
-    public waveforms: WaveformSource;
-    public forceSampleRate?: number;
-
-    public sampleRateString(): string {
-        if (this.forceSampleRate) {
-            return `${this.forceSampleRate} -> ${this.audioInfo.sampleRate}`;
-        }
-        return `${this.audioInfo.sampleRate}`;
-    }
-}
+import {Channel} from "./model";
 
 export interface TimeSample {
     frame: number;

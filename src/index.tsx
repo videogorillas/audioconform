@@ -3,8 +3,10 @@ import * as ReactDOM from "react-dom";
 import AudioConformApp from "./AudioConformApp";
 import {newSampleRange} from "./utils";
 import {WorkerClient} from "./workerclient";
+import {Long} from "kotlin";
 
 (window as any)["newSampleRange"] = newSampleRange;
+(window as any)["KotlinLong"] = Long;
 const cpus = navigator.hardwareConcurrency || 1;
 const workers: Worker[] = [];
 for (let i = 0; i < cpus; i++) {

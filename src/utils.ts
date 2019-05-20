@@ -7,6 +7,23 @@ export const live4red = "#ee2737";
 export const live4blue = "#2196f3";
 export const ZERO = Long.fromInt(0);
 
+export const WAVECOLORS = [
+    "#475164"
+    , "#E17d9f"
+    , "#C1364E"
+    , "#C1361E"
+    , "#bb5f00"
+    , "#F1A000"
+    , "#ae8900"
+    , "#83941d"
+    , "#51Cd2f"
+    , "#089a8c"
+    , "#0078bb"
+    , "#2060EA"
+    , "#2d50a0"
+    , "#6049ab",
+];
+
 export function newSampleRange(start: number, end: number): SampleRange {
     return new SampleRange(Long.fromNumber(start), Long.fromNumber(end));
 }

@@ -1,11 +1,11 @@
 import {com, konform} from "konform";
 import React = require("react");
-import {Channel} from "./PlayerComponent";
 import {live4red, newSampleRange} from "./utils";
 import CssWaveCollider = konform.CssWaveCollider;
 import SampleRange = com.vg.audio.SampleRange;
 import Observable = Rx.Observable;
 import IDisposable = Rx.IDisposable;
+import {Channel} from "./model";
 
 interface WaveCanvasProps {
     channel: Channel;
@@ -95,7 +95,7 @@ export default class WaveCanvas extends React.Component<WaveCanvasProps, WaveCan
 
         this.collider = new CssWaveCollider(channel.waveforms, this.canvasel);
         (window as any)[`collider${channel.id}`] = this.collider;
-        const down = Observable.fromEvent(this.canvasel, "mousedown");
+        const down = Observable.fromEvent(this.canvasel, "mousedown").filter((it: MouseEvent) => it.altKey);
         const up = Observable.fromEvent(this.canvasel, "mouseup");
         const move = Observable.fromEvent(this.canvasel, "mousemove");
         if (this.dragDispose) {
@@ -106,24 +106,5 @@ export default class WaveCanvas extends React.Component<WaveCanvasProps, WaveCan
         }).subscribe(ok => {
             console.log("drag", ok);
         });
-
-        // this.canvasel.onmousemove = (it) => {
-        //     // const sample = this.collider.xToSample(it.offsetX);
-        //     // console.log("x", it.offsetX, "sample", sample)
-        // };
-        // this.canvasel.onmousedown = (it) => {
-        //     console.log("onmousedown");
-        // };
-        // this.canvasel.ondrag = (it) => {
-        //     console.log("ondrag", it);
-        // };
-        // this.canvasel.ondragstart = (it) => {
-        //     console.log("ondragstart", it);
-        // };
-        // this.canvasel.onclick = (it) => {
-        //     const sample = this.collider.xToSample(it.offsetX);
-        //     console.log("onclick x", it.offsetX, "sample", sample);
-        //     const sec = sample / sampleRate;
-        // };
     }
 }

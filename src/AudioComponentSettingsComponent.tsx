@@ -6,42 +6,35 @@ import DialogTitle from "@material-ui/core/DialogTitle";
 import InputLabel from "@material-ui/core/InputLabel";
 import MenuItem from "@material-ui/core/MenuItem";
 import Select from "@material-ui/core/Select";
-import {org} from "konform";
-import {_private} from "@sysval/vgplayer-core";
-import ChannelLabel = org.jcodec.common.model.ChannelLabel;
-import AudioInfo = _private.AudioInfo;
 import TextField from "@material-ui/core/TextField";
 import * as React from "react";
-import {labelFromString} from "./utils";
-import {Channel} from "./model";
+import {AudioComponent} from "./model";
 
-interface AudioChannelSettingsComponentProps {
-    channel: Channel;
+interface AudioComponentSettingsComponentProps {
+    component: AudioComponent;
     offset: number;
+    sampleRate?: number;
     open: boolean;
-    onCancel?: (c: Channel) => void;
-    onOk?: (c: ChannelChanges) => void;
+    onCancel?: (c: AudioComponent) => void;
+    onOk?: (c: ComponentChanges) => void;
 }
 
-interface AudioChannelSettingsComponentState {
-    label?: ChannelLabel;
+interface AudioComponentSettingsComponentState {
     sampleRate?: number;
     offset?: number;
 }
 
-interface ChannelChanges {
+interface ComponentChanges {
     id: string;
-    label?: ChannelLabel;
     sampleRate?: number;
     offset?: number;
 }
 
-export default class AudioChannelSettingsComponent extends React.Component<AudioChannelSettingsComponentProps, AudioChannelSettingsComponentState> {
-    public state: AudioChannelSettingsComponentState = {};
+export default class AudioComponentSettingsComponent extends React.Component<AudioComponentSettingsComponentProps, AudioComponentSettingsComponentState> {
+    public state: AudioComponentSettingsComponentState = {};
 
     public render(): React.ReactElement {
-        const channel = this.props.channel || new Channel();
-        const audioInfo = channel.audioInfo || new AudioInfo();
+        const component = this.props.component || new AudioComponent();
         return <Dialog
             key="dialog"
             fullWidth
@@ -49,24 +42,13 @@ export default class AudioChannelSettingsComponent extends React.Component<Audio
             disableBackdropClick={false}
             disableEscapeKeyDown={false}
             open={this.props.open}
-            onClose={(x) => this.props.onCancel(channel)}
+            onClose={(x) => this.props.onCancel(component)}
         >
-            <DialogTitle>{channel.id || ""}</DialogTitle>
+            <DialogTitle>{component.name || ""}</DialogTitle>
             <DialogContent>
-                <InputLabel key="label-input" htmlFor="label-simple">Label</InputLabel>
-                <Select key="label-select"
-                        value={this.state.label || channel.label || ChannelLabel.MONO}
-                        inputProps={{name: "label", id: "label-simple"}}
-                        onChange={(it) => {
-                            const label = labelFromString(it.target.value) || ChannelLabel.MONO;
-                            this.setState({label});
-                        }}
-                >
-                    {this.labels()}
-                </Select>
                 <InputLabel key="samplerate-input" htmlFor="sampleRate-simple">Hz</InputLabel>
                 <Select key="samplerate-select"
-                        value={this.state.sampleRate || channel.forceSampleRate || audioInfo.sampleRate || 48000}
+                        value={this.state.sampleRate || this.props.sampleRate}
                         inputProps={{name: "sampleRate", id: "sampleRate-simple"}}
                         onChange={(it) => {
                             const sampleRate = parseInt(it.target.value, 10) || 48000;
@@ -90,15 +72,14 @@ export default class AudioChannelSettingsComponent extends React.Component<Audio
             <DialogActions>
                 <Button key="cancel" onClick={(x) => {
                     this.setState({});
-                    this.props.onCancel(channel);
+                    this.props.onCancel(component);
                 }} color="primary">
                     Cancel
                 </Button>
                 <Button key="ok" onClick={(x) => {
                     this.setState({});
-                    const changes: ChannelChanges = {
-                        id: this.props.channel.id,
-                        label: this.state.label,
+                    const changes: ComponentChanges = {
+                        id: this.props.component.name,
                         sampleRate: this.state.sampleRate,
                         offset: this.state.offset,
                     };
@@ -108,10 +89,6 @@ export default class AudioChannelSettingsComponent extends React.Component<Audio
                 </Button>
             </DialogActions>
         </Dialog>;
-    }
-
-    private labels() {
-        return ChannelLabel.values().map((label) => <MenuItem value={label.toString()}>{label.toString()}</MenuItem>);
     }
 
     private samplerates() {

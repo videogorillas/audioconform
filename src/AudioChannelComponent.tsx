@@ -8,11 +8,11 @@ import StarBorder from "@material-ui/icons/StarBorder";
 import StarRate from "@material-ui/icons/StarRate";
 import {com, org} from "konform";
 import * as React from "react";
-import {Channel} from "./PlayerComponent";
 import {newSampleRange} from "./utils";
 import WaveCanvas from "./WaveCanvas";
 import SampleRange = com.vg.audio.SampleRange;
 import ChannelLabel = org.jcodec.common.model.ChannelLabel;
+import {Channel} from "./model";
 
 interface AudioChannelComponentProps {
     isMaster: boolean;
@@ -47,15 +47,27 @@ export default class AudioChannelComponent extends React.Component<AudioChannelC
         seekHelperX: 0,
     };
 
-    public render(): React.ReactElement {
+    private samplerange(): SampleRange {
+        if (this.props.sampleRange) {
+            return this.props.sampleRange;
+        }
         const endsec = this.props.endSec;
+        const channel = this.props.channel;
+        const offset = this.props.offset || 0;
+        const startSample = ((this.props.startSec || 0) * channel.audioInfo.sampleRate) - offset;
+        const endSample = ((endsec * channel.audioInfo.sampleRate) || (channel.audioInfo.totalSamples - 1)) - offset;
+        return newSampleRange(startSample, endSample);
+    }
+
+    public render(): React.ReactElement {
         const key = this.props.channel.id;
         const channel = this.props.channel;
         const hz = this.props.forceSampleRate || channel.audioInfo.sampleRate;
         const selectionRange = this.props.selection;
-        const offset = this.props.offset;
-        const sampleRange = offset ? newSampleRange(-offset, endsec * channel.audioInfo.sampleRate - offset) : undefined;
-        const offsetString = offset ? `${-offset}` : "";
+        const sampleRange = this.samplerange();
+        // console.log("sampleRange", key, (sampleRange || {}).toString());
+
+        const offsetString = this.props.offset ? `${this.props.offset}` : "";
         const label = this.props.label || ChannelLabel.MONO;
         const niceName = key.replace(/.*\//, "");
 
@@ -73,11 +85,11 @@ export default class AudioChannelComponent extends React.Component<AudioChannelC
                  onMouseOut={() => this.setState({showSeekHelper: false})}
                  onMouseMove={(it) => this.setState({seekHelperX: it.nativeEvent.offsetX})}
             >
-                <WaveCanvas key={`wave-${key}`} channel={channel}
-                            startSec={0} endSec={endsec} sampleRange={sampleRange} selectRange={selectionRange}/>
+                <WaveCanvas key={`wave-${key}`} channel={channel} sampleRange={sampleRange}
+                            selectRange={selectionRange}/>
             </div>
             <Typography variant="caption"
-                        gutterBottom> {niceName} {hz} {label.toString()} {offsetString}</Typography>
+                        gutterBottom> {niceName} {hz} {label.toString()} <span onClick={it => console.log("offset clicked", offsetString)}>{offsetString}</span></Typography>
             {this.settings()}
             {this.star()}
             {this.solounsolo()}
