@@ -25,7 +25,7 @@ export class Channel {
 }
 
 export class AudioComponent {
-    public files: File[] = [];
+    public channels: Channel[] = [];
     public name: string = "";
     public color: string;
 }

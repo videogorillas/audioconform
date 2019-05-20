@@ -30,8 +30,24 @@ export function newSampleRange(start: number, end: number): SampleRange {
     return new SampleRange(Long.fromNumber(start), Long.fromNumber(end));
 }
 
+export function hashCode(s: string) {
+    return s.split("").reduce((a, b) => {
+        a = ((a << 5) - a) + b.charCodeAt(0);
+        return a & a;
+    }, 0);
+}
+
 export function fileKey(file: File): string {
     return (file as any).webkitRelativePath || file.name;
+}
+
+export function flipKey<T>(set: Set<T>, key: T): Set<T> {
+    if (set.has(key)) {
+        set.delete(key);
+    } else {
+        set.add(key);
+    }
+    return set;
 }
 
 export function labelFromString(name: string) {

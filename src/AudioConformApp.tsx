@@ -1,4 +1,6 @@
 import Button from "@material-ui/core/Button";
+import Divider from "@material-ui/core/Divider";
+import Drawer from "@material-ui/core/Drawer";
 import Grid from "@material-ui/core/Grid";
 import GridList from "@material-ui/core/GridList";
 import GridListTile from "@material-ui/core/GridListTile";
@@ -7,6 +9,7 @@ import ListSubheader from "@material-ui/core/ListSubheader";
 import Switch from "@material-ui/core/Switch";
 import Tooltip from "@material-ui/core/Tooltip";
 import Typography from "@material-ui/core/Typography";
+import ChevronLeftIcon from "@material-ui/icons/ChevronLeft";
 import CloudUploadIcon from "@material-ui/icons/CloudUpload";
 import MoreVert from "@material-ui/icons/MoreVert";
 import Waves from "@material-ui/icons/Waves";
@@ -16,9 +19,12 @@ import {kotlin, Long} from "kotlin";
 import * as React from "react";
 import AudioChannelComponent from "./AudioChannelComponent";
 import AudioChannelSettingsComponent from "./AudioChannelSettingsComponent";
+import AudioComponentSettingsComponent from "./AudioComponentSettingsComponent";
+import {AudioListComponent} from "./AudioListComponent";
+import {AudioComponent, Channel} from "./model";
 import SpeedDials from "./MyFab";
 import {SeekablePlayerComponent} from "./PlayerComponent";
-import {fileKey, newSampleRange, WAVECOLORS, ZERO} from "./utils";
+import {fileKey, flipKey, hashCode, newSampleRange, WAVECOLORS, ZERO} from "./utils";
 import {WorkerClient} from "./workerclient";
 import ChannelLabel = org.jcodec.common.model.ChannelLabel;
 import Observable = Rx.Observable;
@@ -31,14 +37,12 @@ import SampleRange = com.vg.audio.SampleRange;
 import wavHeader = konform.wavHeader;
 import WavSource = konform.WavSource;
 import WaveformSourceImpl = konform.WaveformSourceImpl;
-import {AudioComponent, Channel} from "./model";
-import AudioComponentSettingsComponent from "./AudioComponentSettingsComponent";
 
 interface AudioConformState {
     vfile: File;
     components: AudioComponent[];
-    masterAudio: File;
-    soloed: Set<File>;
+    masterAudio: string;
+    soloed: Set<string>;
     labelmap: Map<string, ChannelLabel>;
     vtime: number;
     showSettingsForComponent?: string;
@@ -68,7 +72,7 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
         vfile: null,
         components: [],
         masterAudio: null,
-        soloed: new Set<File>(),
+        soloed: new Set<string>(),
         labelmap: new Map<string, ChannelLabel>(),
         vtime: 0,
         indexProgress: new Map<string, Long>(),
@@ -113,23 +117,24 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
         // console.log("render", this);
         (window as any).hackConformApp = this;
 
-        return <div style={{width: "100%", position: "relative"}}><Grid container direction="column" spacing={16}>
-            <Grid item={true}>
-                {this.videodrop()}
+        return <div style={{display: "flex"}}>            {this.componentsdrawer()}
+            <Grid container direction="column" spacing={16}>
+                <Grid item={true}>
+                    {this.videodrop()}
+                </Grid>
+                <Grid item={true}>
+                    {this.conformbutton()}
+                </Grid>
+                <Grid item={true}>
+                    {this.audio()}
+                </Grid>
+                <Grid item={true}>
+                    {this.audiodrop()}
+                </Grid>
+                <Grid item={true}>
+                    {this.audiodropFolder()}
+                </Grid>
             </Grid>
-            <Grid item={true}>
-                {this.conformbutton()}
-            </Grid>
-            <Grid item={true}>
-                {this.audio()}
-            </Grid>
-            <Grid item={true}>
-                {this.audiodrop()}
-            </Grid>
-            <Grid item={true}>
-                {this.audiodropFolder()}
-            </Grid>
-        </Grid>
             <div style={{position: "absolute", bottom: "48px", right: "48px"}}><SpeedDials/></div>
             {this.channelsettings()}
             {this.componentsettings()}
@@ -177,11 +182,11 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
         if (!this.state.showSettingsForComponent) {
             return null;
         }
-        const component = this.state.components.find(it => it.name == this.state.showSettingsForComponent);
+        const component = this.state.components.find((it) => it.name == this.state.showSettingsForComponent);
         if (!component) {
             return null;
         }
-        const offset = component.files.map(f => this.state.foundOffsets.get(fileKey(f)) || 0).reduce((prev, cur) => Math.max(prev, cur), 0);
+        const offset = this.allChannelIds().map((chid) => this.state.foundOffsets.get(chid) || 0).reduce((prev, cur) => Math.max(prev, cur), 0);
         const key = `settings-${this.state.showSettingsForComponent}`;
         return <AudioComponentSettingsComponent key={key}
                                                 component={component}
@@ -193,7 +198,7 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
                                                     if (c.color) {
                                                         component.color = c.color;
                                                     }
-                                                    component.files.map(f => this.channels.get(fileKey(f))).filter(ch => ch != null).forEach(ch => {
+                                                    this.allChannelIds().map((chid) => this.channels.get(chid)).filter((ch) => ch != null).forEach((ch) => {
                                                         if (c.sampleRate) {
                                                             this.state.forceSampleRate.set(ch.id, c.sampleRate);
                                                             ch.forceSampleRate = c.sampleRate;
@@ -278,8 +283,8 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
         </Grid>;
     }
 
-    private audioForConform(): File[] {
-        return this.audioFiles().filter((f) => this.state.checkedForConform.has(fileKey(f)));
+    private audioForConform(): string[] {
+        return this.allChannelIds().filter((chid) => this.state.checkedForConform.has(chid));
     }
 
     private videodrop(): React.ReactNode {
@@ -302,7 +307,7 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
                 </label>
             </Grid>;
         } else {
-            const audioChannels = this.audioFiles().filter((f) => this.state.soloed.has(f)).map((f) => this.makeChannelFromFile(f)).filter((c) => c != null);
+            const audioChannels = this.allChannelIds().filter((chid) => this.state.soloed.has(chid)).map((chid) => this.makeChannelFromFile(chid)).filter((c) => c != null);
             return <SeekablePlayerComponent
                 key="vplayer" url={this.url}
                 timeUpdate={(ts) => this.setState({vtime: ts.sec})}
@@ -313,12 +318,12 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
         }
     }
 
-    private audioFiles(): File[] {
-        return this.state.components.flatMap((c) => c.files);
+    private allChannelIds(): string[] {
+        return this.state.components.flatMap((c) => c.channels.map((ch) => ch.id));
     }
 
-    private makeChannelFromFile(file: File): Channel {
-        const key = fileKey(file);
+    private makeChannelFromFile(chid: string): Channel {
+        const key = chid;
         const label = this.state.labelmap.get(key) || ChannelLabel.MONO;
         const forceSampleRate = this.state.forceSampleRate.get(key);
         const channel = this.channels.get(key);
@@ -339,7 +344,7 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
         return c;
     }
 
-    private samplerange(key: string): SampleRange {
+    private samplerange(chid: string): SampleRange {
         let endsec: number;
         if (this.player) {
             endsec = this.player.getDurationSec();
@@ -347,20 +352,20 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
 
         const startSec = 0;
 
-        const channel = this.channels.get(key);
-        const offset = (this.state.foundOffsets.get(key) || 0);
+        const channel = this.channels.get(chid);
+        const offset = (this.state.foundOffsets.get(chid) || 0);
         const startSample = ((startSec || 0) * channel.audioInfo.sampleRate) - offset;
         const endSample = ((endsec * channel.audioInfo.sampleRate) || (channel.audioInfo.totalSamples - 1)) - offset;
         return newSampleRange(startSample, endSample);
     }
 
-    private audiochannel(file: File): React.ReactNode {
+    private audiochannel(chid: string): React.ReactNode {
         let endsec: number;
         if (this.player) {
             endsec = this.player.getDurationSec();
         }
-        const isMaster = file == this.state.masterAudio;
-        const key = fileKey(file);
+        const isMaster = chid == this.state.masterAudio;
+        const key = chid;
         const channel = this.channels.get(key);
         const hz = this.state.forceSampleRate.get(key) || channel.audioInfo.sampleRate;
         // console.log(key, hz, this.state);
@@ -374,7 +379,7 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
 
         return <AudioChannelComponent isMaster={isMaster}
                                       isCheckedForConform={this.state.checkedForConform.has(key)}
-                                      isSoloed={this.state.soloed.has(file)}
+                                      isSoloed={this.state.soloed.has(chid)}
                                       channel={channel}
                                       forceSampleRate={this.state.forceSampleRate.get(key)}
                                       label={label}
@@ -383,30 +388,10 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
                                       endSec={endsec}
                                       sampleRange={sampleRange}
                                       selection={selectionRange}
-                                      onSolo={(c) => {
-                                          if (this.state.soloed.has(file)) {
-                                              this.state.soloed.delete(file);
-                                          } else {
-                                              this.state.soloed.add(file);
-                                          }
-                                          this.setState({soloed: this.state.soloed});
-                                      }}
-                                      onSetMaster={(c) => {
-                                          this.state.checkedForConform.delete(key);
-                                          return this.setState({
-                                              checkedForConform: this.state.checkedForConform,
-                                              masterAudio: file,
-                                          });
-                                      }}
-                                      onCheckedForConform={(e) => {
-                                          if (this.state.checkedForConform.has(key)) {
-                                              this.state.checkedForConform.delete(key);
-                                          } else {
-                                              this.state.checkedForConform.add(key);
-                                          }
-                                          console.log("checkedForConform", this.state.checkedForConform);
-                                          this.setState({checkedForConform: this.state.checkedForConform});
-                                      }} onSettings={(e) => this.setState({showSettingsForChannel: channel.id})}/>;
+                                      onSolo={(c) => this.setState({soloed: flipKey(this.state.soloed, chid)})}
+                                      onSetMaster={(c) => this.setAsMaster(key)}
+                                      onCheckedForConform={(e) => this.setState({checkedForConform: flipKey(this.state.checkedForConform, key)})}
+                                      onSettings={(e) => this.setState({showSettingsForChannel: channel.id})}/>;
     }
 
     private audio(): React.ReactNode {
@@ -426,9 +411,9 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
                         </Tooltip>
                     </ListSubheader>
                 </GridListTile>
-                {comp.files.map((file) => {
-                    const key = fileKey(file);
-                    return <GridListTile key={key}>{this.audiochannel(file)}</GridListTile>;
+                {comp.channels.map((ch) => {
+                    const key = ch.id;
+                    return <GridListTile key={key}>{this.audiochannel(ch.id)}</GridListTile>;
                 })}
             </GridList>;
         });
@@ -446,16 +431,17 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
 
     private onDropAudio(acceptedFiles: File[]): void {
         console.log(acceptedFiles);
-        const afiles: File[] = this.audioFiles();
+        const afiles: string[] = this.allChannelIds();
         const newFiles = acceptedFiles.filter((f) => {
-            const alreadyExists = afiles.some((af) => fileKey(af) == fileKey(f));
+            const alreadyExists = afiles.some((af) => af == fileKey(f));
             return !alreadyExists;
         });
         console.log("newFiles", newFiles);
         if (newFiles.length != 0) {
             const component = new AudioComponent();
             component.name = fileKey(acceptedFiles[0]).replace(/\/.*/, "");
-            component.color = WAVECOLORS[(Math.random() * WAVECOLORS.length) | 0];
+            const n = hashCode(component.name) % WAVECOLORS.length;
+            component.color = WAVECOLORS[n];
             const components = this.state.components.slice(0);
             components.push(component);
             Observable.fromArray(newFiles).concatMap((f) => {
@@ -475,7 +461,7 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
                 chan.waveforms = new WaveformSourceImpl(chan.samples);
                 chan.color = component.color;
                 this.channels.set(key, chan);
-                component.files.push(file);
+                component.channels.push(chan);
                 this.setState({components});
             }, (err) => {
                 window.alert(`cant read wav ${err}`);
@@ -527,5 +513,38 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
                 </label>
             </Grid>
         </section>;
+    }
+
+    private componentsdrawer() {
+        return <Drawer
+            variant="permanent"
+            anchor="left"
+            style={{width: "480px"}}
+            open={true}
+            PaperProps={{
+                style: {
+                    width: "480px",
+                },
+            }}
+        >
+            <IconButton onClick={(it) => console.log(it)}>
+                <ChevronLeftIcon/>
+            </IconButton>
+            <Divider/>
+            <AudioListComponent components={this.state.components}
+                                soloed={Array.from(this.state.soloed)}
+                                selected={Array.from(this.state.checkedForConform)}
+                                masterAudioId={this.state.masterAudio}
+                                onChannelsSelected={(chids) => this.setState({checkedForConform: new Set<string>(chids)})}
+                                onSetMaster={(chid) => this.setAsMaster(chid)}
+                                onSolo={(chid) => this.setState({soloed: flipKey(this.state.soloed, chid)})
+                                }
+            />
+        </Drawer>;
+    }
+
+    private setAsMaster(chid: string) {
+        this.state.checkedForConform.delete(chid);
+        this.setState({masterAudio: chid, checkedForConform: this.state.checkedForConform});
     }
 }
