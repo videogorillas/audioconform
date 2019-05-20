@@ -123,7 +123,7 @@ export class SeekablePlayerComponent extends PlayerComponent {
     private width = 1280;
 
     public render(): React.ReactNode {
-        return <div style={{width: "100%", height: "720px"}} key="vplayer">
+        return <div style={{width: "100%", height: "480px"}} key="vplayer">
             {super.render()}
             <div key="seekbar" style={{width: "100%", height: "8px", background: "grey", position: "relative"}}
                  ref={r => {

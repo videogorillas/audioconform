@@ -51,6 +51,7 @@ interface AudioConformState {
     forceSampleRate: Map<string, number>;
     indexProgress: Map<string, Long>;
     foundOffsets: Map<string, number>;
+    conformMode: boolean;
 }
 
 interface AudioConformProps {
@@ -79,6 +80,7 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
         checkedForConform: new Set<string>(), // string -> boolean
         forceSampleRate: new Map<string, number>(), // string -> int
         foundOffsets: new Map<string, number>(),
+        conformMode: false,
     };
 
     private channels = new Map<string, Channel>();
@@ -277,7 +279,11 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
             justify="center"
             alignItems="center"
         >
-            <Switch value="checkedC"/><Typography variant="caption" gutterBottom> Conform mode </Typography>
+            <Switch checked={this.state.conformMode}
+                    onChange={() => this.setState({conformMode: !this.state.conformMode})}/><Typography
+            variant="caption"
+            gutterBottom> Conform
+            mode </Typography>
             <Button variant="contained" color="primary" disabled={!enabled}
                     onClick={(e) => this.theconform()}>Conform</Button>
         </Grid>;
@@ -290,7 +296,7 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
     private videodrop(): React.ReactNode {
         if (this.state.vfile == null) {
             return <Grid
-                style={{height: "720px", background: "#424242"}}
+                style={{height: "480px", background: "#020202"}}
                 container
                 direction="row"
                 justify="center"
@@ -394,24 +400,34 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
                                       onSettings={(e) => this.setState({showSettingsForChannel: channel.id})}/>;
     }
 
+    private componentheader(comp: AudioComponent): React.ReactNode {
+        if (this.state.conformMode) return null;
+        return <GridListTile key="Subheader" style={{height: "auto"}}>
+            <ListSubheader component="div">{comp.name}
+                <IconButton
+                    key={`color-${comp.name}`}
+                    onClick={(it) => this.setState({showSettingsForComponent: comp.name})}><Waves
+                    nativeColor={comp.color} fontSize="small"/> </IconButton>
+                <Tooltip title="Component Settings" aria-label="Component Settings">
+                    <IconButton
+                        key={`settings-${comp.name}`}
+                        onClick={(it) => this.setState({showSettingsForComponent: comp.name})}><MoreVert
+                        fontSize="small"/> </IconButton>
+                </Tooltip>
+            </ListSubheader>
+        </GridListTile>;
+    }
+
     private audio(): React.ReactNode {
         const comps: React.ReactNode[] = this.state.components.map((comp) => {
             return <GridList cellHeight={80} cols={1}>
-                <GridListTile key="Subheader" style={{height: "auto"}}>
-                    <ListSubheader component="div">{comp.name}
-                        <IconButton
-                            key={`color-${comp.name}`}
-                            onClick={(it) => this.setState({showSettingsForComponent: comp.name})}><Waves
-                            nativeColor={comp.color} fontSize="small"/> </IconButton>
-                        <Tooltip title="Component Settings" aria-label="Component Settings">
-                            <IconButton
-                                key={`settings-${comp.name}`}
-                                onClick={(it) => this.setState({showSettingsForComponent: comp.name})}><MoreVert
-                                fontSize="small"/> </IconButton>
-                        </Tooltip>
-                    </ListSubheader>
-                </GridListTile>
-                {comp.channels.map((ch) => {
+                {this.componentheader(comp)}
+                {comp.channels.filter(ch => {
+                    if (!this.state.conformMode) {
+                        return true;
+                    }
+                    return this.state.checkedForConform.has(ch.id) && (ch.id != this.state.masterAudio);
+                }).map((ch) => {
                     const key = ch.id;
                     return <GridListTile key={key}>{this.audiochannel(ch.id)}</GridListTile>;
                 })}

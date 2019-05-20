@@ -4,7 +4,9 @@ import AudioConformApp from "./AudioConformApp";
 import {newSampleRange} from "./utils";
 import {WorkerClient} from "./workerclient";
 import {Long} from "kotlin";
-import PersistentDrawerLeft from "./DrawerLeft";
+import MuiThemeProvider from "@material-ui/core/styles/MuiThemeProvider";
+import CssBaseline from "@material-ui/core/CssBaseline";
+import createMuiTheme from "@material-ui/core/styles/createMuiTheme";
 
 (window as any)["newSampleRange"] = newSampleRange;
 (window as any)["KotlinLong"] = Long;
@@ -17,9 +19,16 @@ for (let i = 0; i < cpus; i++) {
 for (let i = 0; i < cpus; i++) {
     workers[i].postMessage(`hello worker ${i}`);
 }
-
+const theme = createMuiTheme({
+    palette: {
+        type: "dark",
+    },
+});
 ReactDOM.render(
-    <AudioConformApp workerClient={new WorkerClient(workers)}/>
+    <MuiThemeProvider theme={theme}>
+        <CssBaseline/>
+        <AudioConformApp workerClient={new WorkerClient(workers)}/>
+    </MuiThemeProvider>
     ,
     document.getElementById("app"),
 );
