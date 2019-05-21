@@ -37,6 +37,7 @@ import SampleRange = com.vg.audio.SampleRange;
 import wavHeader = konform.wavHeader;
 import WavSource = konform.WavSource;
 import WaveformSourceImpl = konform.WaveformSourceImpl;
+import LinearProgress from '@material-ui/core/LinearProgress';
 
 interface AudioConformState {
     vfile: File;
@@ -50,6 +51,7 @@ interface AudioConformState {
     checkedForConform: Set<string>;
     forceSampleRate: Map<string, number>;
     indexProgress: Map<string, Long>;
+    matchProgress: Map<string, number>;
     foundOffsets: Map<string, number>;
     conformMode: boolean;
 }
@@ -77,6 +79,7 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
         labelmap: new Map<string, ChannelLabel>(),
         vtime: 0,
         indexProgress: new Map<string, Long>(),
+        matchProgress: new Map<string, number>(),
         checkedForConform: new Set<string>(), // string -> boolean
         forceSampleRate: new Map<string, number>(), // string -> int
         foundOffsets: new Map<string, number>(),
@@ -195,21 +198,22 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
                                                 offset={offset}
                                                 open={!!this.state.showSettingsForComponent}
                                                 onCancel={(c) => this.setState({showSettingsForComponent: undefined})}
-                                                onOk={(c) => {
-                                                    console.log("save settings for component ", c);
-                                                    if (c.color) {
-                                                        component.color = c.color;
+                                                onOk={(changed) => {
+                                                    console.log("save settings for component ", changed);
+                                                    if (changed.color) {
+                                                        component.color = changed.color;
                                                     }
-                                                    this.allChannelIds().map((chid) => this.channels.get(chid)).filter((ch) => ch != null).forEach((ch) => {
-                                                        if (c.sampleRate) {
-                                                            this.state.forceSampleRate.set(ch.id, c.sampleRate);
-                                                            ch.forceSampleRate = c.sampleRate;
+                                                    const cc = this.state.components.find(cc => cc.name == changed.id);
+                                                    cc.channels.map(ch => this.channels.get(ch.id)).filter((ch) => ch != null).forEach((ch) => {
+                                                        if (changed.sampleRate) {
+                                                            this.state.forceSampleRate.set(ch.id, changed.sampleRate);
+                                                            ch.forceSampleRate = changed.sampleRate;
                                                         }
-                                                        if (c.offset) {
-                                                            this.state.foundOffsets.set(ch.id, c.offset);
+                                                        if (changed.offset) {
+                                                            this.state.foundOffsets.set(ch.id, changed.offset);
                                                         }
-                                                        if (c.color) {
-                                                            ch.color = c.color;
+                                                        if (changed.color) {
+                                                            ch.color = changed.color;
                                                         }
                                                     });
 
@@ -257,16 +261,20 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
         });
         mi.subscribe((idx: FastAudioIndex) => {
             cis.flatMap((cidx) => {
-                const id = cidx.first;
+                const chid = cidx.first;
                 console.log("cidx", cidx);
-                return this.props.workerClient.matchOffsets(idx, cidx.second).map((r) => new Pair(id, r.best));
+                this.state.matchProgress.set(chid, 42);
+                this.setState({matchProgress: this.state.matchProgress});
+                return this.props.workerClient.matchOffsets(idx, cidx.second).map((r) => new Pair(chid, r.best));
             }).subscribe((r) => {
+                const chid = r.first;
+                this.state.matchProgress.set(chid, 0);
                 const masterOffset = this.state.foundOffsets.get(mc.id) || 0;
                 const offset = r.second;
-                this.state.foundOffsets.set(r.first, offset + masterOffset);
+                this.state.foundOffsets.set(chid, offset + masterOffset);
 
-                console.log("foundOffsets", r.first, offset, masterOffset, this.state.foundOffsets);
-                this.setState({foundOffsets: this.state.foundOffsets});
+                console.log("foundOffsets", chid, offset, masterOffset, this.state.foundOffsets);
+                this.setState({foundOffsets: this.state.foundOffsets, matchProgress: this.state.matchProgress});
             }, (err: any) => console.log("cidx err", err));
         }, (err: any) => console.log("idx err", err));
     }
@@ -371,23 +379,24 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
             endsec = this.player.getDurationSec();
         }
         const isMaster = chid == this.state.masterAudio;
-        const key = chid;
-        const channel = this.channels.get(key);
-        const hz = this.state.forceSampleRate.get(key) || channel.audioInfo.sampleRate;
-        // console.log(key, hz, this.state);
-        const selectionEnd = this.state.indexProgress.get(key);
+        const channel = this.channels.get(chid);
+        const hz = this.state.forceSampleRate.get(chid) || channel.audioInfo.sampleRate;
+        // console.log(chid, hz, this.state);
+        const selectionEnd = this.state.indexProgress.get(chid);
         const selectionRange: SampleRange = selectionEnd ? new SampleRange(ZERO, selectionEnd) : undefined;
-        const offset = (this.state.foundOffsets.get(key) || 0);
-        const label = this.state.labelmap.get(key) || ChannelLabel.MONO;
-        const sampleRange = this.samplerange(key);
+        const offset = (this.state.foundOffsets.get(chid) || 0);
+        const label = this.state.labelmap.get(chid) || ChannelLabel.MONO;
+        const sampleRange = this.samplerange(chid);
 
         // console.log("sampleRange", (sampleRange || {}).toString());
 
         return <AudioChannelComponent isMaster={isMaster}
-                                      isCheckedForConform={this.state.checkedForConform.has(key)}
+                                      checkbox={!this.state.conformMode}
+                                      matchProgress={this.state.matchProgress.get(chid)}
+                                      isCheckedForConform={this.state.checkedForConform.has(chid)}
                                       isSoloed={this.state.soloed.has(chid)}
                                       channel={channel}
-                                      forceSampleRate={this.state.forceSampleRate.get(key)}
+                                      forceSampleRate={this.state.forceSampleRate.get(chid)}
                                       label={label}
                                       offset={offset}
                                       startSec={0}
@@ -395,8 +404,8 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
                                       sampleRange={sampleRange}
                                       selection={selectionRange}
                                       onSolo={(c) => this.setState({soloed: flipKey(this.state.soloed, chid)})}
-                                      onSetMaster={(c) => this.setAsMaster(key)}
-                                      onCheckedForConform={(e) => this.setState({checkedForConform: flipKey(this.state.checkedForConform, key)})}
+                                      onSetMaster={(c) => this.setAsMaster(chid)}
+                                      onCheckedForConform={(e) => this.setState({checkedForConform: flipKey(this.state.checkedForConform, chid)})}
                                       onSettings={(e) => this.setState({showSettingsForChannel: channel.id})}/>;
     }
 
@@ -429,7 +438,8 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
                     return this.state.checkedForConform.has(ch.id) && (ch.id != this.state.masterAudio);
                 }).map((ch) => {
                     const key = ch.id;
-                    return <GridListTile key={key}>{this.audiochannel(ch.id)}</GridListTile>;
+                    return <GridListTile key={key}>{this.audiochannel(ch.id)}
+                    </GridListTile>;
                 })}
             </GridList>;
         });
@@ -537,13 +547,9 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
             anchor="left"
             style={{width: "480px"}}
             open={true}
-            PaperProps={{
-                style: {
-                    width: "480px",
-                },
-            }}
+            PaperProps={{style: {width: "480px"}}}
         >
-            <IconButton onClick={(it) => console.log(it)}>
+            <IconButton onClick={(it) => console.log("ChevronLeftIcon", it)}>
                 <ChevronLeftIcon/>
             </IconButton>
             <Divider/>
