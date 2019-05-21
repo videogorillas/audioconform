@@ -1,11 +1,11 @@
 import {com, konform} from "konform";
-import React = require("react");
+import * as React from "react";
+import {Channel} from "./model";
 import {DEFAULT_COLOR, live4red, newSampleRange} from "./utils";
 import CssWaveCollider = konform.CssWaveCollider;
 import SampleRange = com.vg.audio.SampleRange;
 import Observable = Rx.Observable;
 import IDisposable = Rx.IDisposable;
-import {Channel} from "./model";
 
 interface WaveCanvasProps {
     channel: Channel;
@@ -20,31 +20,28 @@ interface WaveCanvasState {
 }
 
 function samplerange(props: WaveCanvasProps): SampleRange {
-    const sampleRate = props.channel.audioInfo.sampleRate;
-    const sampleCount = props.channel.audioInfo.totalSamples;
-
     if (props.sampleRange) {
         return props.sampleRange;
     }
+    const sampleRate = props.channel.audioInfo.sampleRate;
+    const sampleCount = props.channel.audioInfo.totalSamples;
     if (props.endSec || props.startSec) {
         const start = (props.startSec || 0) * sampleRate;
         const end = (props.endSec || 0) * sampleRate || (sampleCount - 1);
-        const sampleRange = newSampleRange(start, end);
-        return sampleRange;
+        return newSampleRange(start, end);
     }
     return newSampleRange(0, sampleCount - 1);
 }
 
 function str(o: any) {
-    if (o) {
-        return o.toString();
-    }
-    return "null";
+    return o ? o.toString() : "null";
 }
 
 export default class WaveCanvas extends React.Component<WaveCanvasProps, WaveCanvasState> {
     private canvasel: HTMLCanvasElement = null;
     private collider: CssWaveCollider = null;
+
+    private dragDispose: IDisposable;
 
     public shouldComponentUpdate(nextProps: Readonly<WaveCanvasProps>, nextState: Readonly<WaveCanvasState>, nextContext: any): boolean {
         return false;
@@ -89,8 +86,6 @@ export default class WaveCanvas extends React.Component<WaveCanvasProps, WaveCan
         console.log("componentDidUpdate", this.canvasel);
     }
 
-    private dragDispose: IDisposable;
-
     private initCollider(channel: Channel) {
         console.log("initCollider", channel);
         const sampleRate = channel.audioInfo.sampleRate;
@@ -104,9 +99,9 @@ export default class WaveCanvas extends React.Component<WaveCanvasProps, WaveCan
         if (this.dragDispose) {
             this.dragDispose.dispose();
         }
-        this.dragDispose = down.flatMap(x => {
+        this.dragDispose = down.flatMap((x) => {
             return move.takeUntil(up);
-        }).subscribe(ok => {
+        }).subscribe((ok) => {
             console.log("drag", ok);
         });
     }

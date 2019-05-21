@@ -2,6 +2,7 @@ import {com, org} from "konform";
 import SampleRange = com.vg.audio.SampleRange;
 import {Long} from "kotlin";
 import ChannelLabel = org.jcodec.common.model.ChannelLabel;
+import {func} from "prop-types";
 
 export const live4red = "#ee2737";
 export const live4blue = "#2196f3";
@@ -84,5 +85,19 @@ export function labelFromString(name: string) {
             return ChannelLabel.SIDE_LEFT;
         case "SIDE_RIGHT":
             return ChannelLabel.SIDE_RIGHT;
+    }
+}
+
+function convertTimescale(srcTv: number, srcTs: number, dstTs: number) {
+    return (srcTv * dstTs / srcTs) | 0;
+}
+
+export function resampleRange(range: SampleRange, forceSampleRate: number, origSampleRate: number) {
+    if (forceSampleRate && origSampleRate) {
+        const newStart = convertTimescale(range.start.toNumber(), origSampleRate, forceSampleRate);
+        const newEnd = convertTimescale(range.end.toNumber(), origSampleRate, forceSampleRate);
+        return newSampleRange(newStart, newEnd);
+    } else {
+        return range;
     }
 }

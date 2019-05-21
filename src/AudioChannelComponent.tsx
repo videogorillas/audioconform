@@ -12,8 +12,10 @@ import * as React from "react";
 import SampleRange = com.vg.audio.SampleRange;
 import ChannelLabel = org.jcodec.common.model.ChannelLabel;
 import {Channel} from "./model";
-import {newSampleRange} from "./utils";
+import {newSampleRange, resampleRange} from "./utils";
 import WaveCanvas from "./WaveCanvas";
+import {kotlin} from "kotlin";
+import println = kotlin.io.println;
 
 interface AudioChannelComponentProps {
     isMaster: boolean;
@@ -65,7 +67,9 @@ export default class AudioChannelComponent extends React.Component<AudioChannelC
         const niceName = key.replace(/.*\//, "");
 
         return <div key={key} style={{width: "100%", height: "80px", position: "relative"}} ref={(d) => {
-            if (!d) { return null; }
+            if (!d) {
+                return null;
+            }
             this.width = d.clientWidth;
             // console.log("clientWidth", d.clientWidth);
         }}>
@@ -98,6 +102,12 @@ export default class AudioChannelComponent extends React.Component<AudioChannelC
     }
 
     private samplerange(): SampleRange {
+        if (this.props.forceSampleRate && this.props.sampleRange) {
+            const resampled = resampleRange(this.props.sampleRange, this.props.forceSampleRate, this.props.channel.audioInfo.sampleRate);
+            // console.log("resampled", resampled.toString(), "from", this.props.sampleRange.toString());
+            return resampled;
+        }
+
         if (this.props.sampleRange) {
             return this.props.sampleRange;
         }
