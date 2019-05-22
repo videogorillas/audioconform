@@ -210,7 +210,7 @@ export class Mp3StereoSegmentedAudioStream extends SegmentedAudioStream {
         const subscribe = this.samples.readStereo(sps, segmentIdx * sps).take(1).map((it) => {
             console.log("readStereo", it.range, it.samples);
             const left = scale32k(it.samples[0]);
-            let right = it.samples[0];
+            let right = it.samples[1];
             if (left !== right) {
                 right = scale32k(right);
             }
