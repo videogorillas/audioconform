@@ -13,6 +13,8 @@ import ChevronLeftIcon from "@material-ui/icons/ChevronLeft";
 import CloudUploadIcon from "@material-ui/icons/CloudUpload";
 import MoreVert from "@material-ui/icons/MoreVert";
 import Waves from "@material-ui/icons/Waves";
+import ZoomIn from "@material-ui/icons/ZoomIn";
+import ZoomOut from "@material-ui/icons/ZoomOut";
 import {_private, Player} from "@sysval/vgplayer-core";
 import {com, konform, org} from "konform";
 import {kotlin, Long} from "kotlin";
@@ -37,7 +39,6 @@ import SampleRange = com.vg.audio.SampleRange;
 import wavHeader = konform.wavHeader;
 import WavSource = konform.WavSource;
 import WaveformSourceImpl = konform.WaveformSourceImpl;
-import LinearProgress from '@material-ui/core/LinearProgress';
 
 interface AudioConformState {
     vfile: File;
@@ -54,6 +55,8 @@ interface AudioConformState {
     matchProgress: Map<string, number>;
     foundOffsets: Map<string, number>;
     conformMode: boolean;
+    zoom: number;
+    zoomAnchorSample: number;
 }
 
 interface AudioConformProps {
@@ -84,6 +87,8 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
         forceSampleRate: new Map<string, number>(), // string -> int
         foundOffsets: new Map<string, number>(),
         conformMode: false,
+        zoom: 1.0,
+        zoomAnchorSample: 0,
     };
 
     private channels = new Map<string, Channel>();
@@ -203,8 +208,8 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
                                                     if (changed.color) {
                                                         component.color = changed.color;
                                                     }
-                                                    const cc = this.state.components.find(cc => cc.name == changed.id);
-                                                    cc.channels.map(ch => this.channels.get(ch.id)).filter((ch) => ch != null).forEach((ch) => {
+                                                    const cc = this.state.components.find((cc) => cc.name == changed.id);
+                                                    cc.channels.map((ch) => this.channels.get(ch.id)).filter((ch) => ch != null).forEach((ch) => {
                                                         if (changed.sampleRate) {
                                                             this.state.forceSampleRate.set(ch.id, changed.sampleRate);
                                                             ch.forceSampleRate = changed.sampleRate;
@@ -286,15 +291,43 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
             direction="row"
             justify="center"
             alignItems="center"
+            spacing={8}
         >
+            {this.zoomcontrols()}
             <Switch checked={this.state.conformMode}
-                    onChange={() => this.setState({conformMode: !this.state.conformMode})}/><Typography
-            variant="caption"
-            gutterBottom> Conform
-            mode </Typography>
+                    onChange={() => this.setState({conformMode: !this.state.conformMode})}/>
+            <Typography variant="caption" gutterBottom> Conform mode </Typography>
             <Button variant="contained" color="primary" disabled={!enabled}
                     onClick={(e) => this.theconform()}>Conform</Button>
         </Grid>;
+    }
+
+    private zoomcontrols() {
+        // if (!this.state.conformMode) {
+        //     return null;
+        // }
+        return <>
+            <IconButton
+                onClick={() => this.setState({
+                    zoom: Math.max(1, this.state.zoom / 1.61803398875),
+                    zoomAnchorSample: this.getZoomAnchorSample(),
+                })}>
+                <ZoomOut/>
+            </IconButton>
+            <IconButton onClick={() => this.setState({
+                zoom: Math.max(1, this.state.zoom * 1.61803398875),
+                zoomAnchorSample: this.getZoomAnchorSample(),
+            })}>
+                <ZoomIn/>
+            </IconButton>
+        </>;
+    }
+
+    private getZoomAnchorSample(): number {
+        if (!this.player) {
+            return 0;
+        }
+        return (this.player.getCurrentTime() | 0) * 48000;
     }
 
     private audioForConform(): string[] {
@@ -359,38 +392,50 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
     }
 
     private samplerange(chid: string): SampleRange {
-        let endsec: number;
+        const channel = this.channels.get(chid);
+        let endsec: number = this.player ? this.player.getDurationSec() : undefined;
+        let anchorSample: number = this.state.zoomAnchorSample | 0;
         if (this.player) {
             endsec = this.player.getDurationSec();
         }
 
         const startSec = 0;
 
-        const channel = this.channels.get(chid);
         const offset = (this.state.foundOffsets.get(chid) || 0);
         const startSample = ((startSec || 0) * channel.audioInfo.sampleRate) - offset;
         const endSample = ((endsec * channel.audioInfo.sampleRate) || (channel.audioInfo.totalSamples - 1)) - offset;
+        const zoom = this.state.zoom;
+        if (zoom > 1) {
+            const toStart = anchorSample - startSample;
+            const toEnd = endSample - anchorSample;
+            const zoomedEnd = toEnd / zoom;
+            const newStart = anchorSample - toStart / zoom;
+            const newEnd = anchorSample + zoomedEnd;
+            return newSampleRange(newStart, newEnd);
+        }
         return newSampleRange(startSample, endSample);
     }
 
     private audiochannel(chid: string): React.ReactNode {
+        const channel = this.channels.get(chid);
+        const sampleRange = this.samplerange(chid);
+
         let endsec: number;
         if (this.player) {
             endsec = this.player.getDurationSec();
         }
         const isMaster = chid == this.state.masterAudio;
-        const channel = this.channels.get(chid);
         const hz = this.state.forceSampleRate.get(chid) || channel.audioInfo.sampleRate;
         // console.log(chid, hz, this.state);
         const selectionEnd = this.state.indexProgress.get(chid);
         const selectionRange: SampleRange = selectionEnd ? new SampleRange(ZERO, selectionEnd) : undefined;
         const offset = (this.state.foundOffsets.get(chid) || 0);
         const label = this.state.labelmap.get(chid) || ChannelLabel.MONO;
-        const sampleRange = this.samplerange(chid);
 
         // console.log("sampleRange", (sampleRange || {}).toString());
 
         return <AudioChannelComponent isMaster={isMaster}
+                                      playheadSample={(this.state.vtime | 0) * hz}
                                       checkbox={!this.state.conformMode}
                                       matchProgress={this.state.matchProgress.get(chid)}
                                       isCheckedForConform={this.state.checkedForConform.has(chid)}
@@ -406,11 +451,15 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
                                       onSolo={(c) => this.setState({soloed: flipKey(this.state.soloed, chid)})}
                                       onSetMaster={(c) => this.setAsMaster(chid)}
                                       onCheckedForConform={(e) => this.setState({checkedForConform: flipKey(this.state.checkedForConform, chid)})}
-                                      onSettings={(e) => this.setState({showSettingsForChannel: channel.id})}/>;
+                                      onSettings={(e) => this.setState({showSettingsForChannel: channel.id})}
+                                      onSeekToSample={sample => console.log("seek to sample", sample)}
+        />;
     }
 
     private componentheader(comp: AudioComponent): React.ReactNode {
-        if (this.state.conformMode) return null;
+        if (this.state.conformMode) {
+            return null;
+        }
         return <GridListTile key="Subheader" style={{height: "auto"}}>
             <ListSubheader component="div">{comp.name}
                 <IconButton
@@ -431,7 +480,7 @@ export default class AudioConformApp extends React.Component<AudioConformProps, 
         const comps: React.ReactNode[] = this.state.components.map((comp) => {
             return <GridList cellHeight={80} cols={1}>
                 {this.componentheader(comp)}
-                {comp.channels.filter(ch => {
+                {comp.channels.filter((ch) => {
                     if (!this.state.conformMode) {
                         return true;
                     }

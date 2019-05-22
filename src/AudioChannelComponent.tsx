@@ -14,8 +14,6 @@ import ChannelLabel = org.jcodec.common.model.ChannelLabel;
 import {Channel} from "./model";
 import {newSampleRange, resampleRange} from "./utils";
 import WaveCanvas from "./WaveCanvas";
-import {kotlin} from "kotlin";
-import println = kotlin.io.println;
 
 interface AudioChannelComponentProps {
     isMaster: boolean;
@@ -24,6 +22,7 @@ interface AudioChannelComponentProps {
     isSoloed: boolean;
     matchProgress: number;
 
+    playheadSample: number;
     channel: Channel;
     forceSampleRate: number;
     label: ChannelLabel;
@@ -39,6 +38,7 @@ interface AudioChannelComponentProps {
     onSetMaster: (c: Channel) => void;
     onCheckedForConform: (c: Channel) => void;
     onSettings: (c: Channel) => void;
+    onSeekToSample: (sample: number) => void;
 }
 
 interface AudioChannelComponentState {
@@ -73,22 +73,17 @@ export default class AudioChannelComponent extends React.Component<AudioChannelC
             this.width = d.clientWidth;
             // console.log("clientWidth", d.clientWidth);
         }}>
-            <div style={{
-                position: "absolute",
-                left: `${this.state.seekHelperX}px`,
-                height: (this.state.showSeekHelper ? "80px" : "0px"),
-                width: "0px",
-                borderLeft: "1px dashed rgba(0,0,0,0.3)",
-                pointerEvents: "none",
-            }}/>
             <div style={{position: "absolute", left: "0px", width: "100%"}}
                  onMouseOver={() => this.setState({showSeekHelper: true})}
                  onMouseOut={() => this.setState({showSeekHelper: false})}
                  onMouseMove={(it) => this.setState({seekHelperX: it.nativeEvent.offsetX})}
+                 onClick={it => this.props.onSeekToSample(this.pixToSample(it.nativeEvent.offsetX))}
             >
                 {this.selectiondiv(selectionRange)}
                 <WaveCanvas key={`wave-${key}`} color={channel.color} channel={channel} sampleRange={sampleRange}/>
             </div>
+            {this.seekhelper()}
+            {this.playhead()}
             <Typography variant="caption"
                         gutterBottom> {niceName} {hz} {label.toString()} <span
                 onClick={(it) => console.log("offset clicked", offsetString)}>{offsetString}</span></Typography>
@@ -99,6 +94,17 @@ export default class AudioChannelComponent extends React.Component<AudioChannelC
             {this.progress()}
             {/*<CircularProgress color="secondary"/>*/}
         </div>;
+    }
+
+    private seekhelper() {
+        return <div style={{
+            position: "absolute",
+            left: `${this.state.seekHelperX}px`,
+            height: (this.state.showSeekHelper ? "80px" : "0px"),
+            width: "0px",
+            borderLeft: "1px dashed rgba(0,0,0,0.3)",
+            pointerEvents: "none",
+        }}/>;
     }
 
     private samplerange(): SampleRange {
@@ -147,9 +153,18 @@ export default class AudioChannelComponent extends React.Component<AudioChannelC
         const r = this.samplerange();
         const d = r.duration().toNumber();
         const spp = d / this.width;
-        const number = (sample - r.start.toNumber()) / spp;
+        const pix = (sample - r.start.toNumber()) / spp;
         // console.log("sample", sample, "px", number);
-        return number;
+        return pix;
+    }
+
+    private pixToSample(pix: number): number {
+        const r = this.samplerange();
+        const d = r.duration().toNumber();
+        const spp = d / this.width;
+        const sample = (pix * spp + r.start.toNumber());
+        // console.log("sample", sample, "px", number);
+        return sample | 0;
     }
 
     private settings() {
@@ -202,5 +217,18 @@ export default class AudioChannelComponent extends React.Component<AudioChannelC
                 <Hearing color={isSoloed ? undefined : "disabled"} fontSize="small"/>
             </IconButton>
         </Tooltip>;
+    }
+
+    private playhead() {
+        const px = this.sampleToPix(this.props.playheadSample | 0);
+        const color = this.props.isSoloed ? "red" : "rgba(255,0,0,0.3)";
+        return <div style={{
+            position: "absolute",
+            left: `${px}px`,
+            height: "80px",
+            width: "0px",
+            borderLeft: `1px solid ${color}`,
+            pointerEvents: "none",
+        }}/>;
     }
 }

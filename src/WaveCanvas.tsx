@@ -94,13 +94,11 @@ export default class WaveCanvas extends React.Component<WaveCanvasProps, WaveCan
         this.collider.waveColor = channel.color || DEFAULT_COLOR;
         (window as any)[`collider${channel.id}`] = this.collider;
         const down = Observable.fromEvent(this.canvasel, "mousedown").filter((it: MouseEvent) => it.altKey);
-        const up = Observable.fromEvent(this.canvasel, "mouseup");
-        const move = Observable.fromEvent(this.canvasel, "mousemove");
         if (this.dragDispose) {
             this.dragDispose.dispose();
         }
         this.dragDispose = down.flatMap((x) => {
-            return move.takeUntil(up);
+            return Observable.fromEvent(this.canvasel, "mousemove").takeUntil(Observable.fromEvent(this.canvasel, "mouseup"));
         }).subscribe((ok) => {
             console.log("drag", ok);
         });
