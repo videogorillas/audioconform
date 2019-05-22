@@ -1,12 +1,12 @@
-import {mp3} from "klame";
 import {_private} from "@sysval/vgplayer-core";
+import {mp3} from "klame";
 import Mp3Encoder = mp3.Mp3Encoder;
 import SegmentedAudioStream = _private.SegmentedAudioStream;
 import AudioInfo = _private.AudioInfo;
 import {konform} from "konform";
 import SampleSource = konform.SampleSource;
 
-const SILENCE_FRAME_48_128kb: Int8Array = new Int8Array(
+const SILENCE_FRAME_48_128KB: Int8Array = new Int8Array(
     [-1, -5, -108, 4, 0, 15, -16, 0, 0, 105, 0, 0, 0, 8, 0, 0, 13, 32, 0, 0, 1, 0, 0, 1, -92, 0, 0, 0, 32, 0, 0, 52, -128, 0, 0, 4, 76, 65, 77, 69, 51, 46, 57, 57, 46, 53, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 
 export class SilenceAudioStream extends SegmentedAudioStream {
@@ -21,7 +21,7 @@ export class SilenceAudioStream extends SegmentedAudioStream {
         this.durationSec = durationSec;
         this.proxyId = proxyId;
         this.id = proxyId;
-        let ai = new AudioInfo();
+        const ai = new AudioInfo();
         ai.audioType = "mp3";
         ai.channelCount = 2;
         ai.channelLabels = ["left", "right"];
@@ -31,9 +31,9 @@ export class SilenceAudioStream extends SegmentedAudioStream {
         this.sampleRate = 48000;
         this.totalSamples = ai.totalSamples;
         if (SilenceAudioStream.segment == null) {
-            SilenceAudioStream.segment = new Int8Array(SilenceAudioStream.framesPerSegment * SILENCE_FRAME_48_128kb.byteLength);
+            SilenceAudioStream.segment = new Int8Array(SilenceAudioStream.framesPerSegment * SILENCE_FRAME_48_128KB.byteLength);
             for (let i = 0; i < SilenceAudioStream.framesPerSegment; i++) {
-                SilenceAudioStream.segment.set(SILENCE_FRAME_48_128kb, i * SILENCE_FRAME_48_128kb.byteLength);
+                SilenceAudioStream.segment.set(SILENCE_FRAME_48_128KB, i * SILENCE_FRAME_48_128KB.byteLength);
             }
         }
 
@@ -42,47 +42,47 @@ export class SilenceAudioStream extends SegmentedAudioStream {
         this.BITRATE = 128;
     }
 
-    silenceAppended(): boolean {
+    public silenceAppended(): boolean {
         return true;
     }
 
-    //Mp3StereoSegmentedAudioStream doesnt grow or change seekable segments on the fly
-    isDynamic(): boolean {
+    // Mp3StereoSegmentedAudioStream doesnt grow or change seekable segments on the fly
+    public isDynamic(): boolean {
         return false;
     }
 
-    getDashInit(onDone: (arg: ArrayBuffer) => void, onError: (arg: XMLHttpRequest) => void) {
+    public getDashInit(onDone: (arg: ArrayBuffer) => void, onError: (arg: XMLHttpRequest) => void) {
         onDone(null);
     }
 
-    getSegmentCount(): number {
-        let frameCount = Math.ceil(this.totalSamples / 1152.0) | 0;
+    public getSegmentCount(): number {
+        const frameCount = Math.ceil(this.totalSamples / 1152.0) | 0;
         return Math.ceil(frameCount / SilenceAudioStream.framesPerSegment) | 0;
     }
 
-    loadSegment(segmentIdx: number, onDone: (arg: ArrayBuffer) => void, onError: (arg: Object) => void): () => void {
+    public loadSegment(segmentIdx: number, onDone: (arg: ArrayBuffer) => void, onError: (arg: Object) => void): () => void {
         console.log("silence segment", segmentIdx);
         onDone(SilenceAudioStream.segment.buffer);
         return () => {
         };
     }
 
-    getDurationSec(): number {
+    public getDurationSec(): number {
         return this.durationSec;
     }
 
-    getSegmentIdxByTime(time: number): number {
-        let sample = (time * this.sampleRate) | 0;
-        let frame = sample / 1152;
+    public getSegmentIdxByTime(time: number): number {
+        const sample = (time * this.sampleRate) | 0;
+        const frame = sample / 1152;
         return (frame / SilenceAudioStream.framesPerSegment) | 0;
     }
 
-    getSegmentStartTime(idx: number): number {
-        return (idx * SilenceAudioStream.samplesPerSegment / this.sampleRate)
+    public getSegmentStartTime(idx: number): number {
+        return (idx * SilenceAudioStream.samplesPerSegment / this.sampleRate);
     }
 
-    getSegmentDuration(idx: number): number {
-        return (SilenceAudioStream.samplesPerSegment / this.sampleRate)
+    public getSegmentDuration(idx: number): number {
+        return (SilenceAudioStream.samplesPerSegment / this.sampleRate);
     }
 }
 
@@ -92,7 +92,7 @@ export class NullAudioStream extends SegmentedAudioStream {
         super();
         this.proxyId = proxyId;
         this.id = proxyId;
-        let ai = new AudioInfo();
+        const ai = new AudioInfo();
         ai.audioType = "mp3";
         ai.channelCount = 2;
         ai.channelLabels = ["left", "right"];
@@ -107,43 +107,43 @@ export class NullAudioStream extends SegmentedAudioStream {
         this.BITRATE = 128;
     }
 
-    silenceAppended(): boolean {
+    public silenceAppended(): boolean {
         return false;
     }
 
-    //Mp3StereoSegmentedAudioStream doesnt grow or change seekable segments on the fly
-    isDynamic(): boolean {
+    // Mp3StereoSegmentedAudioStream doesnt grow or change seekable segments on the fly
+    public isDynamic(): boolean {
         return false;
     }
 
-    getDashInit(onDone: (arg: ArrayBuffer) => void, onError: (arg: XMLHttpRequest) => void) {
+    public getDashInit(onDone: (arg: ArrayBuffer) => void, onError: (arg: XMLHttpRequest) => void) {
         onDone(null);
     }
 
-    getSegmentCount(): number {
+    public getSegmentCount(): number {
         return 0;
     }
 
-    loadSegment(segmentIdx: number, onDone: (arg: ArrayBuffer) => void, onError: (arg: Object) => void): () => void {
+    public loadSegment(segmentIdx: number, onDone: (arg: ArrayBuffer) => void, onError: (arg: Object) => void): () => void {
         console.log("noaudio segment", segmentIdx);
         onDone(new Int8Array(0).buffer);
         return () => {
         };
     }
 
-    getDurationSec(): number {
+    public getDurationSec(): number {
         return 0.0;
     }
 
-    getSegmentIdxByTime(time: number): number {
+    public getSegmentIdxByTime(time: number): number {
         return 0;
     }
 
-    getSegmentStartTime(idx: number): number {
-        return 0.0
+    public getSegmentStartTime(idx: number): number {
+        return 0.0;
     }
 
-    getSegmentDuration(idx: number): number {
+    public getSegmentDuration(idx: number): number {
         return 0.0;
     }
 }
@@ -156,8 +156,8 @@ function scale32k(samples: Float32Array): Float32Array {
 }
 
 export class Mp3StereoSegmentedAudioStream extends SegmentedAudioStream {
-    static readonly framesPerSegment = 42 * 2;
-    static readonly samplesPerSegment = Mp3StereoSegmentedAudioStream.framesPerSegment * 1152;
+    public static readonly framesPerSegment = 42 * 2;
+    public static readonly samplesPerSegment = Mp3StereoSegmentedAudioStream.framesPerSegment * 1152;
 
     private readonly mp3: Mp3Encoder;
     private readonly samples: SampleSource;
@@ -169,7 +169,7 @@ export class Mp3StereoSegmentedAudioStream extends SegmentedAudioStream {
         this.samples = samples;
         this.proxyId = proxyId;
         this.id = proxyId;
-        let ai = new AudioInfo();
+        const ai = new AudioInfo();
         ai.audioType = "mp3";
         ai.channelCount = 2;
         ai.channelLabels = ["left", "right"];
@@ -187,65 +187,65 @@ export class Mp3StereoSegmentedAudioStream extends SegmentedAudioStream {
         this.segmentCount = Math.ceil(this.frameCount / Mp3StereoSegmentedAudioStream.framesPerSegment) | 0;
     }
 
-    silenceAppended(): boolean {
+    public silenceAppended(): boolean {
         return false;
     }
 
-    //Mp3StereoSegmentedAudioStream doesnt grow or change seekable segments on the fly
-    isDynamic(): boolean {
+    // Mp3StereoSegmentedAudioStream doesnt grow or change seekable segments on the fly
+    public isDynamic(): boolean {
         return false;
     }
 
-    getDashInit(onDone: (arg: ArrayBuffer) => void, onError: (arg: XMLHttpRequest) => void) {
+    public getDashInit(onDone: (arg: ArrayBuffer) => void, onError: (arg: XMLHttpRequest) => void) {
         onDone(null);
     }
 
-    getSegmentCount(): number {
+    public getSegmentCount(): number {
         return this.segmentCount;
     }
 
-    loadSegment(segmentIdx: number, onDone: (arg: ArrayBuffer) => void, onError: (arg: Object) => void): () => void {
+    public loadSegment(segmentIdx: number, onDone: (arg: ArrayBuffer) => void, onError: (arg: Object) => void): () => void {
         console.log("loadSegment", segmentIdx);
-        let sps = Mp3StereoSegmentedAudioStream.samplesPerSegment;
-        let subscribe = this.samples.readStereo(sps, segmentIdx * sps).take(1).map(it => {
+        const sps = Mp3StereoSegmentedAudioStream.samplesPerSegment;
+        const subscribe = this.samples.readStereo(sps, segmentIdx * sps).take(1).map((it) => {
             console.log("readStereo", it.range, it.samples);
-            let left = scale32k(it.samples[0]);
+            const left = scale32k(it.samples[0]);
             let right = it.samples[0];
-            if (left === right) {
+            if (left !== right) {
                 right = scale32k(right);
             }
-            let body = this.mp3.encodeSamples(left, right);
-            let tail = this.mp3.flush();
-            let concat = new Int8Array(body.length + tail.length);
+            const body = this.mp3.encodeSamples(left, right);
+            const tail = this.mp3.flush();
+            const concat = new Int8Array(body.length + tail.length);
             concat.set(body, 0);
             concat.set(tail, body.length);
             console.log("encode", it.range, it.samples, concat.byteLength);
             return concat.buffer;
-        }).subscribe(mp3buf => onDone(mp3buf), err => {
+        }).subscribe((mp3buf) => onDone(mp3buf), (err) => {
             console.log("error", err);
             onError(err);
         });
 
-        let abort = () => subscribe.dispose();
+        const abort = () => subscribe.dispose();
         return abort;
     }
 
-    getDurationSec(): number {
-        return this.audioInfo.totalSamples / this.audioInfo.sampleRate
+    public getDurationSec(): number {
+        return this.audioInfo.totalSamples / this.audioInfo.sampleRate;
     }
 
-    getSegmentIdxByTime(time: number): number {
-        let sample = (time * this.sampleRate) | 0;
-        let frame = sample / 1152;
+    public getSegmentIdxByTime(time: number): number {
+        const sample = (time * this.sampleRate) | 0;
+        const frame = sample / 1152;
         return (frame / Mp3StereoSegmentedAudioStream.framesPerSegment) | 0;
     }
 
-    getSegmentStartTime(idx: number): number {
-        return (idx * Mp3StereoSegmentedAudioStream.samplesPerSegment / this.sampleRate)
+    public getSegmentStartTime(idx: number): number {
+        return (idx * Mp3StereoSegmentedAudioStream.samplesPerSegment / this.sampleRate);
     }
 
-    getSegmentDuration(idx: number): number {
-        return (Mp3StereoSegmentedAudioStream.samplesPerSegment / this.sampleRate)
+    public getSegmentDuration(idx: number): number {
+        return (Mp3StereoSegmentedAudioStream.samplesPerSegment / this.sampleRate);
     }
 
 }
